@@ -12,8 +12,6 @@ import {
 import { useDispatch } from 'react-redux';
 import { login } from '../store/slices/authSlice';
 import { AppDispatch } from '../store';
-import { setActiveProfile } from '../store/slices/profileSlice';
-import { setGuestAuth } from '../store/slices/authSlice';
 
 export default function LoginScreen({ navigation }: any) {
   const dispatch = useDispatch<AppDispatch>();
@@ -37,36 +35,47 @@ export default function LoginScreen({ navigation }: any) {
     }
   };
 
-  const handleGuest = () => {
-    const guest = { _id: 'guest', name: 'Guest', avatar: '', isKids: false };
-    dispatch(setActiveProfile(guest));
-    // mark session as guest-authenticated so navigator shows Main
-    dispatch(setGuestAuth(null));
-  };
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <Text style={styles.backButtonText}>←</Text>
+      </TouchableOpacity>
+
       <View style={styles.content}>
-        <Text style={styles.logo}>OTT</Text>
-        <Text style={styles.subtitle}>Stream unlimited movies & series</Text>
+        <Text style={styles.header}>Log In</Text>
+        <Text style={styles.subtitle}>
+          Sign in to continue to your favorite shows and movies.
+        </Text>
+
+        <View style={styles.ssoContainer}>
+          <TouchableOpacity style={styles.ssoButton}>
+            <Text style={styles.ssoText}>G</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.ssoButton}>
+            <Text style={styles.ssoText}>f</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.fieldLabel}>Email</Text>
 
         <TextInput
           style={styles.input}
-          placeholder="Email"
-          placeholderTextColor="#808080"
+          placeholder="kumarishubham@gmail.com"
+          placeholderTextColor="#555"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
         />
 
+        <Text style={styles.fieldLabel}>Password</Text>
         <TextInput
           style={styles.input}
           placeholder="Password"
-          placeholderTextColor="#808080"
+          placeholderTextColor="#555"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -78,18 +87,14 @@ export default function LoginScreen({ navigation }: any) {
           disabled={isLoading}
         >
           <Text style={styles.buttonText}>
-            {isLoading ? 'Loading...' : 'Sign In'}
+            {isLoading ? 'Loading...' : 'LOG IN'}
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+        <TouchableOpacity onPress={() => navigation.navigate('Register')} style={styles.createAccountButton}>
           <Text style={styles.link}>
-            Don't have an account? <Text style={styles.linkBold}>Sign Up</Text>
+            Don't Have an Account? <Text style={styles.linkBold}>Create Account</Text>
           </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.guestButton} onPress={handleGuest}>
-          <Text style={styles.guestText}>Continue as Guest</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -101,38 +106,76 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
+  backButton: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    zIndex: 10,
+  },
+  backButtonText: {
+    fontSize: 32,
+    color: '#fff',
+  },
   content: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: 30,
   },
-  logo: {
-    fontSize: 48,
+  header: {
+    fontSize: 40,
     fontWeight: 'bold',
-    color: '#E50914',
-    textAlign: 'center',
+    color: '#fff',
     marginBottom: 10,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#808080',
-    textAlign: 'center',
+    fontSize: 14,
+    color: '#999',
+    marginBottom: 30,
+    lineHeight: 20,
+  },
+  ssoContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 40,
   },
-  input: {
-    backgroundColor: '#333',
-    borderRadius: 8,
-    padding: 16,
+  ssoButton: {
+    flex: 1,
+    backgroundColor: '#222',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  ssoText: {
+    fontSize: 28,
+    color: '#666',
+    fontWeight: 'bold',
+  },
+  fieldLabel: {
     fontSize: 16,
     color: '#fff',
-    marginBottom: 16,
+    marginBottom: 12,
+    fontWeight: '500',
+  },
+  input: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 18,
+    fontSize: 16,
+    color: '#fff',
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#333',
   },
   button: {
-    backgroundColor: '#E50914',
-    borderRadius: 8,
-    padding: 16,
+    backgroundColor: '#8B0000',
+    borderRadius: 12,
+    padding: 18,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 16,
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -142,23 +185,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  link: {
-    color: '#808080',
-    textAlign: 'center',
+  createAccountButton: {
     marginTop: 24,
+    alignItems: 'center',
+  },
+  link: {
+    color: '#666',
+    textAlign: 'center',
     fontSize: 14,
   },
   linkBold: {
     color: '#fff',
-    fontWeight: 'bold',
-  },
-  guestButton: {
-    marginTop: 18,
-    alignItems: 'center',
-    padding: 12,
-  },
-  guestText: {
-    color: '#bbb',
-    fontSize: 15,
+    fontWeight: '600',
   },
 });
