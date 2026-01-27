@@ -48,10 +48,20 @@ export const fetchSeriesById = createAsyncThunk(
   'content/fetchSeriesById',
   async (id: string, { rejectWithValue }) => {
     try {
+      console.log('fetchSeriesById thunk: Starting fetch for id:', id);
       const response = await apiService.getSeriesById(id);
+      console.log('fetchSeriesById thunk: Full response:', JSON.stringify(response, null, 2));
+      console.log('fetchSeriesById thunk: response.data:', response.data);
+      console.log('fetchSeriesById thunk: response.data.series:', response.data?.series);
       return response.data.series;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch series');
+      console.error('fetchSeriesById thunk: Error caught:', error);
+      console.error('fetchSeriesById thunk: Error status:', error?.status);
+      console.error('fetchSeriesById thunk: Error body:', error?.body);
+      console.error('fetchSeriesById thunk: Error message:', error?.message);
+      console.error('fetchSeriesById thunk: Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+      const message = error?.body?.message || error?.message || 'Failed to fetch series';
+      return rejectWithValue(message);
     }
   }
 );

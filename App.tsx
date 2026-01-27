@@ -2,12 +2,13 @@ import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Provider, useSelector } from 'react-redux';
+import { Provider, useDispatch, useSelector } from 'react-redux';
 import { View, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { store, RootState } from './src/store';
 import { loadStoredAuth } from './src/store/slices/authSlice';
 import { Ionicons } from '@expo/vector-icons';
+import { fetchProfiles, setActiveProfile } from './src/store/slices/profileSlice';
 
 // Screens
 import WelcomeScreen from './src/screens/WelcomeScreen';
@@ -21,6 +22,7 @@ import AccountScreen from './src/screens/AccountScreen';
 import MovieDetailScreen from './src/screens/MovieDetailScreen';
 import SeriesDetailScreen from './src/screens/SeriesDetailScreen';
 import VideoPlayerScreen from './src/screens/VideoPlayerScreen';
+import CategoryScreen from './src/screens/CategoryScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -104,8 +106,21 @@ const styles = StyleSheet.create({
 });
 
 function AppNavigator() {
+  const dispatch = useDispatch();
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
-  const { activeProfile } = useSelector((state: RootState) => state.profile);
+  const { activeProfile, profiles } = useSelector((state: RootState) => state.profile);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      dispatch(fetchProfiles() as any);
+    }
+  }, [dispatch, isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthenticated && !activeProfile && profiles.length > 0) {
+      dispatch(setActiveProfile(profiles[0]));
+    }
+  }, [isAuthenticated, activeProfile, profiles, dispatch]);
 
   return (
     <Stack.Navigator
@@ -129,6 +144,7 @@ function AppNavigator() {
           <Stack.Screen name="MovieDetail" component={MovieDetailScreen} />
           <Stack.Screen name="SeriesDetail" component={SeriesDetailScreen} />
           <Stack.Screen name="VideoPlayer" component={VideoPlayerScreen} />
+          <Stack.Screen name="Category" component={CategoryScreen} />
         </>
       )}
     </Stack.Navigator>

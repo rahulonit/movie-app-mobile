@@ -359,7 +359,15 @@ class ApiService {
   }
 
   async getSeriesById(id: string) {
-    return this.request(`/series/${id}`);
+    console.log('ApiService: getSeriesById called with id:', id);
+    try {
+      const result = await this.request(`/series/${id}`);
+      console.log('ApiService: getSeriesById response:', result);
+      return result;
+    } catch (error: any) {
+      console.error('ApiService: getSeriesById error:', error?.message || error);
+      throw error;
+    }
   }
 
   async searchContent(query: string, filters?: Record<string, any>) {

@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   RefreshControl,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../store';
 import { fetchMyList } from '../store/slices/profileSlice';
@@ -22,6 +23,14 @@ export default function MyListScreen({ navigation }: any) {
       dispatch(fetchMyList(activeProfile._id));
     }
   }, [activeProfile]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (activeProfile) {
+        dispatch(fetchMyList(activeProfile._id));
+      }
+    }, [activeProfile, dispatch])
+  );
 
   const onRefresh = async () => {
     if (!activeProfile) return;
@@ -57,7 +66,12 @@ export default function MyListScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>My List</Text>
-      {myList.length === 0 ? (
+      {!activeProfile ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyText}>No profile selected</Text>
+          <Text style={styles.emptySubtext}>Pick a profile to load My List.</Text>
+        </View>
+      ) : myList.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyText}>Your list is empty</Text>
           <Text style={styles.emptySubtext}>
@@ -68,7 +82,7 @@ export default function MyListScreen({ navigation }: any) {
         <FlatList
           data={myList}
           renderItem={renderItem}
-          keyExtractor={(item) => item._id}
+          keyExtractor={(item, index) => item._id || `mylist-${index}`}
           numColumns={3}
           contentContainerStyle={styles.list}
           refreshControl={

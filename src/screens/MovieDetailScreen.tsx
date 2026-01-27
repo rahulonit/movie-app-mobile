@@ -165,7 +165,8 @@ const styles = StyleSheet.create({
   },
   heroSection: {
     position: 'relative',
-    height: 400,
+    height: 200,
+    marginTop: 50,
   },
   heroImage: {
     width: '100%',
@@ -173,7 +174,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: 50,
+    top: 0,
     left: 16,
     backgroundColor: 'rgba(0,0,0,0.6)',
     width: 40,
