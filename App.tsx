@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Provider, useDispatch, useSelector } from 'react-redux';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { store, RootState } from './src/store';
 import { loadStoredAuth } from './src/store/slices/authSlice';
@@ -104,6 +104,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#333',
   },
 });
+
+const LoadingScreen = () => (
+  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>
+    <ActivityIndicator size="large" color="#fff" />
+  </View>
+);
 
 function AppNavigator() {
   const dispatch = useDispatch();

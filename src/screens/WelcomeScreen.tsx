@@ -13,6 +13,7 @@ import { useDispatch } from 'react-redux';
 import { setGuestAuth } from '../store/slices/authSlice';
 import { setActiveProfile } from '../store/slices/profileSlice';
 
+
 const { width, height } = Dimensions.get('window');
 
 export default function WelcomeScreen({ navigation }: any) {
@@ -41,7 +42,7 @@ export default function WelcomeScreen({ navigation }: any) {
           {/* Camera Icon */}
           <View style={styles.iconContainer}>
             <Image
-              source={{ uri: 'https://res.cloudinary.com/dxbno5xjb/image/upload/v1769152839/Logo_dt5nm3.png' }}
+              source={require('../../assets/Logo-2.png')}
               style={styles.logo}
               resizeMode="contain"
             />

@@ -5,15 +5,21 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
+    "icon": "./assets/Logo-2.png",
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ottstreaming.app"
+      "bundleIdentifier": "com.ottstreaming.app",
+      "icon": "./assets/Logo-2.png"
     },
     "android": {
-      "package": "com.ottstreaming.app"
+      "package": "com.ottstreaming.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/Logo-2.png",
+        "backgroundColor": "#FFFFFF"
+      }
     },
     "web": {},
     "extra": {
