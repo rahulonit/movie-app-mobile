@@ -125,11 +125,41 @@ export default function MovieDetailScreen({ route, navigation }: any) {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.description}>{currentMovie.description}</Text>
+        <Text style={styles.description}>{currentMovie.plot || currentMovie.description}</Text>
+
+        {currentMovie.imdbRating && (
+          <View style={styles.imdbSection}>
+            <Text style={styles.imdbRating}>⭐ {currentMovie.imdbRating}/10</Text>
+            {currentMovie.imdbLink && (
+              <Text style={styles.imdbLabel}>IMDB Rating</Text>
+            )}
+          </View>
+        )}
+
+        {currentMovie.director && (
+          <View style={styles.detailSection}>
+            <Text style={styles.detailLabel}>Director:</Text>
+            <Text style={styles.detailValue}>{currentMovie.director}</Text>
+          </View>
+        )}
+
+        {currentMovie.writer && (
+          <View style={styles.detailSection}>
+            <Text style={styles.detailLabel}>Writer:</Text>
+            <Text style={styles.detailValue}>{currentMovie.writer}</Text>
+          </View>
+        )}
+
+        {currentMovie.actors && (
+          <View style={styles.detailSection}>
+            <Text style={styles.detailLabel}>Cast:</Text>
+            <Text style={styles.detailValue}>{currentMovie.actors}</Text>
+          </View>
+        )}
 
         <View style={styles.detailSection}>
           <Text style={styles.detailLabel}>Language:</Text>
-          <Text style={styles.detailValue}>{currentMovie.language}</Text>
+          <Text style={styles.detailValue}>{currentMovie.languages || currentMovie.language}</Text>
         </View>
 
         <View style={styles.detailSection}>
@@ -138,6 +168,45 @@ export default function MovieDetailScreen({ route, navigation }: any) {
             {currentMovie.genres.join(', ')}
           </Text>
         </View>
+
+        {currentMovie.country && (
+          <View style={styles.detailSection}>
+            <Text style={styles.detailLabel}>Country:</Text>
+            <Text style={styles.detailValue}>{currentMovie.country}</Text>
+          </View>
+        )}
+
+        {currentMovie.released && (
+          <View style={styles.detailSection}>
+            <Text style={styles.detailLabel}>Released:</Text>
+            <Text style={styles.detailValue}>{currentMovie.released}</Text>
+          </View>
+        )}
+
+        {currentMovie.rated && (
+          <View style={styles.detailSection}>
+            <Text style={styles.detailLabel}>Rated:</Text>
+            <Text style={styles.detailValue}>{currentMovie.rated}</Text>
+          </View>
+        )}
+
+        {currentMovie.awards && (
+          <View style={styles.detailSection}>
+            <Text style={styles.detailLabel}>Awards:</Text>
+            <Text style={styles.detailValue}>{currentMovie.awards}</Text>
+          </View>
+        )}
+
+        {currentMovie.ratings && currentMovie.ratings.length > 0 && (
+          <View style={styles.detailSection}>
+            <Text style={styles.detailLabel}>Ratings:</Text>
+            {currentMovie.ratings.map((rating: any, index: number) => (
+              <Text key={index} style={styles.detailValue}>
+                {rating.source}: {rating.value}
+              </Text>
+            ))}
+          </View>
+        )}
 
         <View style={styles.detailSection}>
           <Text style={styles.detailLabel}>Rating:</Text>
@@ -247,6 +316,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     marginBottom: 24,
+  },
+  imdbSection: {
+    backgroundColor: '#F5C518',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  imdbRating: {
+    color: '#000',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  imdbLabel: {
+    color: '#000',
+    fontSize: 12,
+    marginTop: 4,
   },
   detailSection: {
     marginBottom: 16,

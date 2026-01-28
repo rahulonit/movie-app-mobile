@@ -202,11 +202,41 @@ export default function SeriesDetailScreen({ route, navigation }: any) {
             </>
           )}
         </View>
-        <Text style={styles.description}>{currentSeries.description}</Text>
+        <Text style={styles.description}>{currentSeries.plot || currentSeries.description}</Text>
+
+        {currentSeries.imdbRating && (
+          <View style={styles.imdbSection}>
+            <Text style={styles.imdbRating}>⭐ {currentSeries.imdbRating}/10</Text>
+            {currentSeries.imdbLink && (
+              <Text style={styles.imdbLabel}>IMDB Rating</Text>
+            )}
+          </View>
+        )}
+
+        {currentSeries.director && (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Director:</Text>
+            <Text style={styles.detailValue}>{currentSeries.director}</Text>
+          </View>
+        )}
+
+        {currentSeries.writer && (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Writer:</Text>
+            <Text style={styles.detailValue}>{currentSeries.writer}</Text>
+          </View>
+        )}
+
+        {currentSeries.actors && (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Cast:</Text>
+            <Text style={styles.detailValue}>{currentSeries.actors}</Text>
+          </View>
+        )}
 
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Language:</Text>
-          <Text style={styles.detailValue}>{currentSeries.language}</Text>
+          <Text style={styles.detailValue}>{currentSeries.languages || currentSeries.language}</Text>
         </View>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Genres:</Text>
@@ -214,6 +244,20 @@ export default function SeriesDetailScreen({ route, navigation }: any) {
             {(currentSeries.genres || []).join(", ")}
           </Text>
         </View>
+
+        {currentSeries.country && (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Country:</Text>
+            <Text style={styles.detailValue}>{currentSeries.country}</Text>
+          </View>
+        )}
+
+        {currentSeries.awards && (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Awards:</Text>
+            <Text style={styles.detailValue}>{currentSeries.awards}</Text>
+          </View>
+        )}
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Seasons</Text>
@@ -386,6 +430,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
     marginBottom: 16,
+  },
+  imdbSection: {
+    backgroundColor: '#F5C518',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  imdbRating: {
+    color: '#000',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  imdbLabel: {
+    color: '#000',
+    fontSize: 12,
+    marginTop: 4,
   },
   detailRow: {
     flexDirection: "row",
