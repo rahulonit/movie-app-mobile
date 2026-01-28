@@ -89,7 +89,7 @@ export default function SeriesDetailScreen({ route, navigation }: any) {
   const handlePlayEpisode = (episode: any) => {
     if (!currentSeries) return;
     navigation.navigate("VideoPlayer", {
-      playbackId: episode.muxPlaybackId,
+      cloudflareVideoId: episode.cloudflareVideoId,
       title: `${currentSeries.title} - S${episode.seasonNumber || activeSeason}E${episode.episodeNumber}`,
       contentId: currentSeries._id,
       contentType: "Series",

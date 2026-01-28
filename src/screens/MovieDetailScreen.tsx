@@ -31,12 +31,12 @@ export default function MovieDetailScreen({ route, navigation }: any) {
   }, [currentMovie, myList]);
 
   const handlePlayMovie = () => {
-    if (!currentMovie.muxPlaybackId) {
+    if (!currentMovie.cloudflareVideoId) {
       Alert.alert('Premium Required', 'This content requires a premium subscription');
       return;
     }
     navigation.navigate('VideoPlayer', {
-      playbackId: currentMovie.muxPlaybackId,
+      cloudflareVideoId: currentMovie.cloudflareVideoId,
       title: currentMovie.title,
       contentId: currentMovie._id,
       contentType: 'Movie',

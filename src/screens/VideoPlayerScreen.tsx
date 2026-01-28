@@ -8,7 +8,7 @@ import apiService from '../services/api';
 import * as ScreenOrientation from 'expo-screen-orientation';
 
 export default function VideoPlayerScreen({ route, navigation }: any) {
-  const { playbackId, playbackToken, title, contentId, contentType, episodeId } = route.params;
+  const { cloudflareVideoId, title, contentId, contentType, episodeId } = route.params;
   const activeProfile = useSelector((state: RootState) => state.profile.activeProfile);
   const lastProgressSent = useRef<number>(0);
   const webRef = useRef<WebView>(null);
@@ -45,78 +45,92 @@ export default function VideoPlayerScreen({ route, navigation }: any) {
   }, [activeProfile, contentId, episodeId]);
 
   const html = useMemo(() => {
-    const id = playbackId || '';
-    const token = playbackToken || '';
+    const videoId = cloudflareVideoId || '';
     const safeTitle = (title || '').replace(/</g, '&lt;');
     const startTime = startPosition || 0;
+    // Note: Cloudflare Stream URLs use customer subdomain - update if needed
+    // Format: https://customer-<CODE>.cloudflarestream.com/<VIDEO_ID>/iframe
+    // For simplicity, using the basic iframe embed URL
     return `<!DOCTYPE html>
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <style>
-      html, body { margin: 0; padding: 0; background: #000; height: 100%; }
-      mux-player { width: 100%; height: 100%; background: #000; }
+      html, body { margin: 0; padding: 0; background: #000; height: 100%; overflow: hidden; }
+      iframe { width: 100%; height: 100%; border: none; }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/@mux/mux-player@3"></script>
   </head>
   <body>
-    <mux-player
+    <iframe
       id="player"
-      stream-type="on-demand"
-      playsinline
-      autoplay
-      title="${safeTitle}"
-      playback-id="${id}"
-      ${token ? `playback-token="${token}"` : ''}
-      start-time="${startTime}"
-      controls
-    ></mux-player>
+      src="https://iframe.cloudflarestream.com/${videoId}?autoplay=true&muted=false&startTime=${Math.floor(startTime)}"
+      allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+      allowfullscreen
+    ></iframe>
     <script>
-      const player = document.getElementById('player');
+      const iframe = document.getElementById('player');
       const post = (payload) => {
         if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
           window.ReactNativeWebView.postMessage(JSON.stringify(payload));
         }
       };
       
-      // Notify React Native when player is ready
-      player?.addEventListener('loadedmetadata', () => {
-        post({ type: 'ready' });
-      });
+      let currentPosition = ${startTime};
+      let videoDuration = 0;
+      let isPaused = false;
       
-      player?.addEventListener('timeupdate', () => {
-        post({ type: 'progress', position: player.currentTime * 1000, duration: player.duration * 1000, paused: player.paused });
-      });
-      
-      player?.addEventListener('play', () => {
-        post({ type: 'playstate', paused: false });
-      });
-      
-      player?.addEventListener('pause', () => {
-        post({ type: 'playstate', paused: true });
-      });
-      
-      player?.addEventListener('error', (e) => {
-        post({ type: 'error', message: (e?.detail && e.detail.message) || 'Mux player error' });
+      // Listen for Stream iframe postMessage API
+      window.addEventListener('message', (event) => {
+        if (event.data && typeof event.data === 'object') {
+          const data = event.data;
+          
+          if (data.event === 'timeupdate') {
+            currentPosition = data.currentTime || 0;
+            videoDuration = data.duration || 0;
+            post({ type: 'progress', position: currentPosition * 1000, duration: videoDuration * 1000, paused: isPaused });
+          } else if (data.event === 'play') {
+            isPaused = false;
+            post({ type: 'playstate', paused: false });
+          } else if (data.event === 'pause') {
+            isPaused = true;
+            post({ type: 'playstate', paused: true });
+          } else if (data.event === 'loadedmetadata') {
+            post({ type: 'ready' });
+          } else if (data.event === 'error') {
+            post({ type: 'error', message: 'Cloudflare Stream error' });
+          }
+        }
       });
       
       // Handle messages from React Native
       document.addEventListener('message', (event) => {
         let data;
         try { data = JSON.parse(event.data); } catch { return; }
-        if (!player) return;
+        if (!iframe || !iframe.contentWindow) return;
+        
         if (data.type === 'seek' && typeof data.delta === 'number') {
-          player.currentTime = Math.max(0, Math.min(player.duration || Infinity, player.currentTime + data.delta));
+          const newTime = Math.max(0, Math.min(videoDuration, currentPosition + data.delta));
+          iframe.contentWindow.postMessage({ type: 'seek', time: newTime }, '*');
         } else if (data.type === 'play') {
-          player.play().catch(e => console.log('Play failed:', e));
+          iframe.contentWindow.postMessage({ type: 'play' }, '*');
         } else if (data.type === 'pause') {
-          player.pause();
+          iframe.contentWindow.postMessage({ type: 'pause' }, '*');
         }
       });
+      
+      // Request initial state
+      setTimeout(() => {
+        if (iframe && iframe.contentWindow) {
+          iframe.contentWindow.postMessage({ type: 'addEventListener', event: 'timeupdate' }, '*');
+          iframe.contentWindow.postMessage({ type: 'addEventListener', event: 'play' }, '*');
+          iframe.contentWindow.postMessage({ type: 'addEventListener', event: 'pause' }, '*');
+          iframe.contentWindow.postMessage({ type: 'addEventListener', event: 'loadedmetadata' }, '*');
+        }
+      }, 500);
     </script>
   </body>
 </html>`;
-  }, [playbackId, playbackToken, title, startPosition]);
+  }, [cloudflareVideoId, title, startPosition]);
 
   const handleMessage = useCallback(
     (event: WebViewMessageEvent) => {
