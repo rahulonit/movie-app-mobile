@@ -7,11 +7,19 @@ import {
   Image,
   TouchableOpacity,
   Alert,
+  FlatList,
+  Dimensions,
+  StatusBar,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../store';
 import { fetchMovieById } from '../store/slices/contentSlice';
 import { addToMyList, removeFromMyList, fetchMyList } from '../store/slices/profileSlice';
+import apiService from '../services/api';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function MovieDetailScreen({ route, navigation }: any) {
   const { id } = route.params;
@@ -19,6 +27,8 @@ export default function MovieDetailScreen({ route, navigation }: any) {
   const { currentMovie } = useSelector((state: RootState) => state.content);
   const { activeProfile, myList } = useSelector((state: RootState) => state.profile);
   const [inMyList, setInMyList] = useState(false);
+  const [castMembers, setCastMembers] = useState<any[]>([]);
+  const [recommendedMovies, setRecommendedMovies] = useState<any[]>([]);
 
   useEffect(() => {
     dispatch(fetchMovieById(id));
@@ -30,16 +40,44 @@ export default function MovieDetailScreen({ route, navigation }: any) {
     }
   }, [currentMovie, myList]);
 
+  // Parse cast members from actors string
+  useEffect(() => {
+    if (currentMovie?.actors) {
+      const actors = currentMovie.actors.split(',').map((actor: string, index: number) => ({
+        id: index,
+        name: actor.trim(),
+        image: `https://ui-avatars.com/api/?name=${encodeURIComponent(actor.trim())}&size=200&background=E50914&color=fff&bold=true`,
+      }));
+      setCastMembers(actors.slice(0, 10));
+    }
+  }, [currentMovie]);
+
+  // Fetch recommended movies
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      if (currentMovie?._id) {
+        try {
+          const response = await apiService.getRelatedContent(currentMovie._id, 'Movie');
+          setRecommendedMovies(response.data || []);
+        } catch (error) {
+          console.log('Could not fetch recommendations:', error);
+        }
+      }
+    };
+    fetchRecommendations();
+  }, [currentMovie]);
+
   const handlePlayMovie = () => {
-    if (!currentMovie.cloudflareVideoId) {
+    if (!currentMovie.cloudflareVideoId && !currentMovie.muxPlaybackId) {
       Alert.alert('Premium Required', 'This content requires a premium subscription');
       return;
     }
-    navigation.navigate('VideoPlayer', {
-      cloudflareVideoId: currentMovie.cloudflareVideoId,
+    navigation.navigate('EnhancedVideoPlayer', {
+      playbackId: currentMovie.muxPlaybackId || currentMovie.cloudflareVideoId,
       title: currentMovie.title,
       contentId: currentMovie._id,
       contentType: 'Movie',
+      movieData: currentMovie,
     });
   };
 
@@ -70,280 +108,500 @@ export default function MovieDetailScreen({ route, navigation }: any) {
   if (!currentMovie) {
     return (
       <View style={[styles.container, styles.centered]}>
+        <StatusBar barStyle="light-content" />
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
 
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  };
+
+  const renderCastMember = ({ item }: any) => (
+    <View style={styles.castMember}>
+      <Image source={{ uri: item.image }} style={styles.castImage} />
+      <Text style={styles.castName} numberOfLines={2}>
+        {item.name}
+      </Text>
+    </View>
+  );
+
+  const renderRecommendedMovie = ({ item }: any) => (
+    <TouchableOpacity
+      style={styles.recommendedCard}
+      onPress={() => navigation.push('MovieDetail', { id: item._id })}
+    >
+      <Image
+        source={{ uri: item.poster?.vertical || item.poster?.horizontal }}
+        style={styles.recommendedPoster}
+      />
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.9)']}
+        style={styles.recommendedGradient}
+      >
+        <Text style={styles.recommendedTitle} numberOfLines={2}>
+          {item.title}
+        </Text>
+        {item.imdbRating && (
+          <Text style={styles.recommendedRating}>⭐ {item.imdbRating}</Text>
+        )}
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.heroSection}>
-        <Image
-          source={{ uri: currentMovie.poster.horizontal }}
-          style={styles.heroImage}
-          resizeMode="cover"
-        />
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backButtonText}>←</Text>
-        </TouchableOpacity>
-      </View>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Hero Section with Poster */}
+        <View style={styles.heroSection}>
+          <Image
+            source={{ uri: currentMovie.poster?.vertical || currentMovie.poster?.horizontal || 'https://res.cloudinary.com/dxbno5xjb/image/upload/v1769669827/MV5BODExYmU1N2ItY2IyMS00OGY5LTlkZTMtNTBmM2QyMjJlZDM2XkEyXkFqcGc._V1__zjdc2v.jpg' }}
+            style={styles.heroPoster}
+            resizeMode="cover"
+          />
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.9)']}
+            style={styles.heroGradient}
+          />
 
-      <View style={styles.content}>
-        <Text style={styles.title}>{currentMovie.title}</Text>
+          {/* Centered Play Button */}
+          <TouchableOpacity style={styles.centerPlayButton} onPress={handlePlayMovie}>
+            <View style={styles.playButtonCircle}>
+              <MaterialIcons name="play-arrow" size={48} color="#fff" />
+            </View>
+          </TouchableOpacity>
 
-        <View style={styles.meta}>
-          <Text style={styles.metaText}>{currentMovie.releaseYear}</Text>
-          <Text style={styles.metaText}>•</Text>
-          <Text style={styles.metaText}>{currentMovie.duration} min</Text>
-          <Text style={styles.metaText}>•</Text>
-          <Text style={styles.metaText}>{currentMovie.maturityRating}</Text>
-          {currentMovie.isPremium && (
-            <>
-              <Text style={styles.metaText}>•</Text>
-              <Text style={styles.premium}>PREMIUM</Text>
-            </>
-          )}
+          {/* Top Bar with Back and Favorite */}
+          <View style={styles.topBar}>
+            <TouchableOpacity style={styles.topButton} onPress={() => navigation.goBack()}>
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.topButton} onPress={handleToggleMyList}>
+              <Ionicons
+                name={inMyList ? 'heart' : 'heart-outline'}
+                size={24}
+                color={inMyList ? '#E50914' : '#fff'}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <View style={styles.buttons}>
-          <TouchableOpacity
-            style={styles.playButton}
-            onPress={handlePlayMovie}
-          >
-            <Text style={styles.playButtonText}>▶ Play</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.listButton}
-            onPress={handleToggleMyList}
-          >
-            <Text style={styles.listButtonText}>
-              {inMyList ? '✓ In My List' : '+ My List'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* Content Section */}
+        <View style={styles.contentSection}>
+          {/* Movie Title */}
+          <Text style={styles.movieTitle}>{currentMovie.title}</Text>
 
-        <Text style={styles.description}>{currentMovie.plot || currentMovie.description}</Text>
-
-        {currentMovie.imdbRating && (
-          <View style={styles.imdbSection}>
-            <Text style={styles.imdbRating}>⭐ {currentMovie.imdbRating}/10</Text>
-            {currentMovie.imdbLink && (
-              <Text style={styles.imdbLabel}>IMDB Rating</Text>
+          {/* Metadata Pills */}
+          <View style={styles.metaPills}>
+            {currentMovie.genres?.slice(0, 2).map((genre: string, index: number) => (
+              <View key={index} style={styles.pill}>
+                <Text style={styles.pillText}>{genre}</Text>
+              </View>
+            ))}
+            <View style={styles.pill}>
+              <Text style={styles.pillText}>{currentMovie.language || currentMovie.languages}</Text>
+            </View>
+            {currentMovie.duration && (
+              <View style={styles.pill}>
+                <Text style={styles.pillText}>{formatDuration(currentMovie.duration)}</Text>
+              </View>
+            )}
+            {currentMovie.imdbRating && (
+              <View style={[styles.pill, styles.ratingPill]}>
+                <Text style={styles.pillText}>⭐ {currentMovie.imdbRating}</Text>
+              </View>
             )}
           </View>
-        )}
 
-        {currentMovie.director && (
-          <View style={styles.detailSection}>
-            <Text style={styles.detailLabel}>Director:</Text>
-            <Text style={styles.detailValue}>{currentMovie.director}</Text>
-          </View>
-        )}
-
-        {currentMovie.writer && (
-          <View style={styles.detailSection}>
-            <Text style={styles.detailLabel}>Writer:</Text>
-            <Text style={styles.detailValue}>{currentMovie.writer}</Text>
-          </View>
-        )}
-
-        {currentMovie.actors && (
-          <View style={styles.detailSection}>
-            <Text style={styles.detailLabel}>Cast:</Text>
-            <Text style={styles.detailValue}>{currentMovie.actors}</Text>
-          </View>
-        )}
-
-        <View style={styles.detailSection}>
-          <Text style={styles.detailLabel}>Language:</Text>
-          <Text style={styles.detailValue}>{currentMovie.languages || currentMovie.language}</Text>
-        </View>
-
-        <View style={styles.detailSection}>
-          <Text style={styles.detailLabel}>Genres:</Text>
-          <Text style={styles.detailValue}>
-            {currentMovie.genres.join(', ')}
-          </Text>
-        </View>
-
-        {currentMovie.country && (
-          <View style={styles.detailSection}>
-            <Text style={styles.detailLabel}>Country:</Text>
-            <Text style={styles.detailValue}>{currentMovie.country}</Text>
-          </View>
-        )}
-
-        {currentMovie.released && (
-          <View style={styles.detailSection}>
-            <Text style={styles.detailLabel}>Released:</Text>
-            <Text style={styles.detailValue}>{currentMovie.released}</Text>
-          </View>
-        )}
-
-        {currentMovie.rated && (
-          <View style={styles.detailSection}>
-            <Text style={styles.detailLabel}>Rated:</Text>
-            <Text style={styles.detailValue}>{currentMovie.rated}</Text>
-          </View>
-        )}
-
-        {currentMovie.awards && (
-          <View style={styles.detailSection}>
-            <Text style={styles.detailLabel}>Awards:</Text>
-            <Text style={styles.detailValue}>{currentMovie.awards}</Text>
-          </View>
-        )}
-
-        {currentMovie.ratings && currentMovie.ratings.length > 0 && (
-          <View style={styles.detailSection}>
-            <Text style={styles.detailLabel}>Ratings:</Text>
-            {currentMovie.ratings.map((rating: any, index: number) => (
-              <Text key={index} style={styles.detailValue}>
-                {rating.source}: {rating.value}
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            <TouchableOpacity style={styles.playButton} onPress={handlePlayMovie}>
+              <MaterialIcons name="play-arrow" size={28} color="#000" />
+              <Text style={styles.playButtonText}>Play</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.listButton} onPress={handleToggleMyList}>
+              <Ionicons
+                name={inMyList ? 'checkmark' : 'add'}
+                size={24}
+                color="#fff"
+              />
+              <Text style={styles.listButtonText}>
+                {inMyList ? 'In My List' : 'My List'}
               </Text>
-            ))}
+            </TouchableOpacity>
           </View>
-        )}
 
-        <View style={styles.detailSection}>
-          <Text style={styles.detailLabel}>Rating:</Text>
-          <Text style={styles.detailValue}>
-            {currentMovie.rating}/10
-          </Text>
+          {/* About Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>About</Text>
+            <Text style={styles.aboutText}>
+              {currentMovie.plot || currentMovie.description}
+            </Text>
+          </View>
+
+          {/* Additional Info Pills */}
+          {(currentMovie.director || currentMovie.rated || currentMovie.releaseYear) && (
+            <View style={styles.infoRow}>
+              {currentMovie.releaseYear && (
+                <View style={styles.infoPill}>
+                  <Text style={styles.infoPillLabel}>Year</Text>
+                  <Text style={styles.infoPillValue}>{currentMovie.releaseYear}</Text>
+                </View>
+              )}
+              {currentMovie.rated && (
+                <View style={styles.infoPill}>
+                  <Text style={styles.infoPillLabel}>Rated</Text>
+                  <Text style={styles.infoPillValue}>{currentMovie.rated}</Text>
+                </View>
+              )}
+              {currentMovie.director && (
+                <View style={[styles.infoPill, { flex: 1 }]}>
+                  <Text style={styles.infoPillLabel}>Director</Text>
+                  <Text style={styles.infoPillValue} numberOfLines={1}>
+                    {currentMovie.director.split(',')[0]}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Cast Section */}
+          {castMembers.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Cast</Text>
+              <FlatList
+                horizontal
+                data={castMembers}
+                renderItem={renderCastMember}
+                keyExtractor={(item) => item.id.toString()}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.castList}
+              />
+            </View>
+          )}
+
+          {/* Recommended Section */}
+          {recommendedMovies.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Recommended For You</Text>
+              <FlatList
+                horizontal
+                data={recommendedMovies}
+                renderItem={renderRecommendedMovie}
+                keyExtractor={(item, index) => `${item._id}-${index}`}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.recommendedList}
+              />
+            </View>
+          )}
+
+          {/* OMDB Additional Info */}
+          {currentMovie.awards && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Awards</Text>
+              <Text style={styles.infoText}>{currentMovie.awards}</Text>
+            </View>
+          )}
+
+          {currentMovie.ratings && currentMovie.ratings.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Ratings</Text>
+              {currentMovie.ratings.map((rating: any, index: number) => (
+                <View key={index} style={styles.ratingRow}>
+                  <Text style={styles.ratingSource}>{rating.source}</Text>
+                  <Text style={styles.ratingValue}>{rating.value}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {currentMovie.country && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Production</Text>
+              <Text style={styles.infoText}>Country: {currentMovie.country}</Text>
+              {currentMovie.released && (
+                <Text style={styles.infoText}>Released: {currentMovie.released}</Text>
+              )}
+            </View>
+          )}
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#0a0a0a',
   },
   centered: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#0a0a0a',
   },
   loadingText: {
     color: '#fff',
     fontSize: 16,
   },
   heroSection: {
+    height: Dimensions.get('window').height * 0.55,
     position: 'relative',
-    height: 200,
-    marginTop: 50,
   },
-  heroImage: {
+  heroPoster: {
     width: '100%',
     height: '100%',
   },
-  backButton: {
+  heroGradient: {
     position: 'absolute',
-    top: 0,
-    left: 16,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '70%',
+  },
+  topBar: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    zIndex: 10,
+  },
+  topButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  backButtonText: {
-    color: '#fff',
-    fontSize: 24,
+  centerPlayButton: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -40 }, { translateY: -40 }],
+    zIndex: 5,
   },
-  content: {
-    padding: 16,
-  },
-  title: {
-    color: '#fff',
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 12,
-  },
-  meta: {
-    flexDirection: 'row',
+  playButtonCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 10,
   },
-  metaText: {
-    color: '#808080',
-    fontSize: 14,
+  contentSection: {
+    padding: 20,
+    paddingBottom: 40,
   },
-  premium: {
-    color: '#E50914',
+  movieTitle: {
+    fontSize: 32,
     fontWeight: 'bold',
-    fontSize: 12,
+    color: '#fff',
+    marginBottom: 16,
+    letterSpacing: 0.5,
   },
-  buttons: {
+  metaPills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 20,
+    gap: 8,
+  },
+  pill: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  ratingPill: {
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+    borderColor: 'rgba(255, 215, 0, 0.4)',
+  },
+  pillText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  actionButtons: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 30,
   },
   playButton: {
+    flex: 2,
+    flexDirection: 'row',
     backgroundColor: '#fff',
     paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 6,
-    flex: 1,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   playButtonText: {
     color: '#000',
     fontSize: 16,
     fontWeight: 'bold',
-    textAlign: 'center',
   },
   listButton: {
-    backgroundColor: '#333',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 6,
     flex: 1,
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   listButtonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '600',
   },
-  description: {
-    color: '#fff',
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 24,
+  section: {
+    marginBottom: 28,
   },
-  imdbSection: {
-    backgroundColor: '#F5C518',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 20,
-    alignItems: 'center',
-  },
-  imdbRating: {
-    color: '#000',
+  sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-  },
-  imdbLabel: {
-    color: '#000',
-    fontSize: 12,
-    marginTop: 4,
-  },
-  detailSection: {
+    color: '#fff',
     marginBottom: 16,
+    letterSpacing: 0.3,
   },
-  detailLabel: {
-    color: '#808080',
+  aboutText: {
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.8)',
+    lineHeight: 24,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  infoPill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  infoPillLabel: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.5)',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  infoPillValue: {
     fontSize: 14,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  castList: {
+    paddingRight: 20,
+  },
+  castMember: {
+    alignItems: 'center',
+    marginRight: 16,
+    width: 90,
+  },
+  castImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  castName: {
+    fontSize: 13,
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  recommendedList: {
+    paddingRight: 20,
+  },
+  recommendedCard: {
+    marginRight: 14,
+    width: 130,
+  },
+  recommendedPoster: {
+    width: 130,
+    height: 195,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    marginBottom: 8,
+  },
+  recommendedGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '50%',
+    borderRadius: 10,
+    justifyContent: 'flex-end',
+    padding: 8,
+  },
+  recommendedRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  ratingText: {
+    color: '#FFD700',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  recommendedTitle: {
+    fontSize: 13,
+    color: '#fff',
+    fontWeight: '600',
     marginBottom: 4,
   },
-  detailValue: {
-    color: '#fff',
-    fontSize: 16,
+  recommendedGenre: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.6)',
+  },
+  infoText: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.75)',
+    marginBottom: 8,
+    lineHeight: 20,
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  ratingSource: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  ratingValue: {
+    fontSize: 14,
+    color: '#FFD700',
+    fontWeight: '600',
   },
 });
+

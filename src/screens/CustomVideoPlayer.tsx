@@ -12,13 +12,15 @@ import {
   ScrollView,
   StatusBar,
   PanResponder,
-  GestureResponderEvent,
+  Image,
+  FlatList,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import type { AVPlaybackStatus } from 'expo-av';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import { BlurView } from 'expo-blur';
 import { RootState } from '../store';
 import apiService from '../services/api';
 
@@ -29,11 +31,16 @@ interface CustomVideoPlayerProps {
   contentType: 'Movie' | 'Series';
   episodeId?: string;
   onBack: () => void;
+  movieData?: any; // Full movie/series data including cast, recommendations, etc.
 }
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SEEK_TIME = 10000; // 10 seconds in milliseconds
-const DOUBLE_TAP_DELAY = 500; // Increased for better detection
+const DOUBLE_TAP_DELAY = 500;
+
+// Quality options
+const QUALITY_OPTIONS = ['420p', '720p', '1080p', '4K'];
+const SUBTITLE_LANGUAGES = ['English', 'Spanish', 'French', 'German', 'Hindi'];
 
 export default function CustomVideoPlayer({
   playbackId,
@@ -42,6 +49,7 @@ export default function CustomVideoPlayer({
   contentType,
   episodeId,
   onBack,
+  movieData,
 }: CustomVideoPlayerProps) {
   const activeProfile = useSelector((state: RootState) => state.profile.activeProfile);
   
@@ -49,10 +57,12 @@ export default function CustomVideoPlayer({
   const [status, setStatus] = useState<AVPlaybackStatus | null>(null);
   const [isBuffering, setIsBuffering] = useState(true);
   const [controlsVisible, setControlsVisible] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(true);
-  const [showMenu, setShowMenu] = useState(false);
-  const [selectedQuality, setSelectedQuality] = useState('Auto');
-  const [selectedCaption, setSelectedCaption] = useState('Off');
+  const [isFullscreen, setIsFullscreen] = useState(false); // Start in portrait mode
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const [selectedQuality, setSelectedQuality] = useState('720p');
+  const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
+  const [selectedSubtitleLanguage, setSelectedSubtitleLanguage] = useState('English');
+  const [isLocked, setIsLocked] = useState(false);
   const controlsOpacity = useRef(new Animated.Value(1)).current;
   const progressIntervalRef = useRef<any>(null);
   const controlsTimeoutRef = useRef<any>(null);
@@ -67,6 +77,8 @@ export default function CustomVideoPlayer({
   });
   const [isDraggingSeek, setIsDraggingSeek] = useState(false);
   const [dragPosition, setDragPosition] = useState(0);
+  const [contentData, setContentData] = useState<any>(movieData || null);
+  const [recommendedContent, setRecommendedContent] = useState<any[]>([]);
 
   const streamUrl = `https://stream.mux.com/${playbackId}.m3u8`;
 

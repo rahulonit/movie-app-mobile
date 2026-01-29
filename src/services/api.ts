@@ -87,7 +87,7 @@ class ApiService {
       const normalized = envBase.startsWith('http') ? envBase : `http://${envBase}`;
       this.baseURL = normalized.endsWith('/api') ? normalized : `${normalized.replace(/\/$/, '')}/api`;
       this.resolved = true;
-      console.log('Resolved API base URL from EXPO_PUBLIC env', this.baseURL);
+      console.log('✅ Resolved API base URL from EXPO_PUBLIC env', this.baseURL);
       return;
     }
 
@@ -99,10 +99,17 @@ class ApiService {
         const normalized = explicit.startsWith('http') ? explicit : `http://${explicit}`;
         this.baseURL = normalized.endsWith('/api') ? normalized : `${normalized.replace(/\/$/, '')}/api`;
         this.resolved = true;
-        console.log('Resolved API base URL from expo extra', this.baseURL);
+        console.log('✅ Resolved API base URL from expo extra (app.json)', this.baseURL);
         return;
       }
     } catch (e) {}
+
+    // IMPORTANT: Only probe localhost in development mode when no explicit URL is set
+    if (!__DEV__) {
+      console.log('✅ Production mode: Using default baseURL', this.baseURL);
+      this.resolved = true;
+      return;
+    }
 
     const candidates: string[] = [];
     try {
@@ -420,6 +427,17 @@ class ApiService {
 
   async getWatchHistory(profileId: string) {
     return this.request(`/watch-history/${profileId}`);
+  }
+
+  // Related Content
+  async getRelatedContent(contentId: string, contentType: 'Movie' | 'Series') {
+    return this.request(`/content/${contentId}/related`, {
+      query: { type: contentType },
+    });
+  }
+
+  async getSimilarMovies(movieId: string) {
+    return this.request(`/movies/${movieId}/similar`);
   }
 }
 

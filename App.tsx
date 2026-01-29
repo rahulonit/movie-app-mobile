@@ -23,6 +23,7 @@ import MovieDetailScreen from './src/screens/MovieDetailScreen';
 import SeriesDetailScreen from './src/screens/SeriesDetailScreen';
 import VideoPlayerScreen from './src/screens/VideoPlayerScreen';
 import CategoryScreen from './src/screens/CategoryScreen';
+import EnhancedVideoPlayer from './src/screens/EnhancedVideoPlayer';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -150,6 +151,14 @@ function AppNavigator() {
           <Stack.Screen name="MovieDetail" component={MovieDetailScreen} />
           <Stack.Screen name="SeriesDetail" component={SeriesDetailScreen} />
           <Stack.Screen name="VideoPlayer" component={VideoPlayerScreen} />
+          <Stack.Screen name="EnhancedVideoPlayer">
+            {({ route, navigation }) => (
+              <EnhancedVideoPlayer
+                {...(route.params as any)}
+                onBack={() => navigation.goBack()}
+              />
+            )}
+          </Stack.Screen>
           <Stack.Screen name="Category" component={CategoryScreen} />
         </>
       )}
