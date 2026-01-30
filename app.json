@@ -23,7 +23,7 @@
     },
     "web": {},
     "extra": {
-      "API_BASE_URL": "https://movie-app-backend-ecru.vercel.app/api"
+      "API_BASE_URL": "https://movie-app-backend-indol-rho.vercel.app/api"
     },
     "plugins": [
       [

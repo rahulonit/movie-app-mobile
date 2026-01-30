@@ -9,13 +9,19 @@ import {
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../store';
+import { useNavigation } from '@react-navigation/native';
 import { logout } from '../store/slices/authSlice';
 import { setActiveProfile } from '../store/slices/profileSlice';
 
 export default function AccountScreen() {
   const dispatch = useDispatch<AppDispatch>();
+  const navigation: any = useNavigation();
   const { user, isLoggingOut } = useSelector((state: RootState) => state.auth);
   const { activeProfile } = useSelector((state: RootState) => state.profile);
+
+  const handleManageProfiles = () => {
+    navigation.navigate('ProfileSelection');
+  };
 
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -35,9 +41,6 @@ export default function AccountScreen() {
     ]);
   };
 
-  const handleSwitchProfile = () => {
-    dispatch(setActiveProfile(null));
-  };
 
   return (
     <ScrollView style={styles.container}>
@@ -78,8 +81,8 @@ export default function AccountScreen() {
         </View>
       </View>
 
-      <TouchableOpacity style={styles.button} onPress={handleSwitchProfile}>
-        <Text style={styles.buttonText}>Switch Profile</Text>
+      <TouchableOpacity style={styles.button} onPress={handleManageProfiles}>
+        <Text style={styles.buttonText}>Manage Profiles</Text>
       </TouchableOpacity>
 
       <TouchableOpacity

@@ -68,16 +68,15 @@ export default function MovieDetailScreen({ route, navigation }: any) {
   }, [currentMovie]);
 
   const handlePlayMovie = () => {
-    if (!currentMovie.cloudflareVideoId && !currentMovie.muxPlaybackId) {
+    if (!currentMovie.cloudflareVideoId) {
       Alert.alert('Premium Required', 'This content requires a premium subscription');
       return;
     }
-    navigation.navigate('EnhancedVideoPlayer', {
-      playbackId: currentMovie.muxPlaybackId || currentMovie.cloudflareVideoId,
+    navigation.navigate('VideoPlayer', {
+      cloudflareVideoId: currentMovie.cloudflareVideoId,
       title: currentMovie.title,
       contentId: currentMovie._id,
       contentType: 'Movie',
-      movieData: currentMovie,
     });
   };
 

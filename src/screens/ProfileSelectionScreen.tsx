@@ -17,6 +17,7 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../store';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { fetchProfiles, setActiveProfile, createProfile, updateProfile, deleteProfile } from '../store/slices/profileSlice';
 
 export default function ProfileSelectionScreen() {
@@ -53,6 +54,7 @@ export default function ProfileSelectionScreen() {
 
   const handleSelectProfile = (profile: any) => {
     dispatch(setActiveProfile(profile));
+    navigation.navigate('Main');
   };
 
   const renderProfile = ({ item }: any) => (
@@ -111,6 +113,12 @@ export default function ProfileSelectionScreen() {
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity 
+        style={styles.backButton} 
+        onPress={() => navigation.goBack()}
+      >
+        <Ionicons name="arrow-back" size={28} color="#fff" />
+      </TouchableOpacity>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Who's watching?</Text>
       </View>
@@ -217,6 +225,13 @@ const styles = StyleSheet.create({
     padding: 20,
     justifyContent: 'center',
     marginTop: 50,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 60,
+    left: 20,
+    zIndex: 10,
+    padding: 8,
   },
   title: {
     fontSize: 32,

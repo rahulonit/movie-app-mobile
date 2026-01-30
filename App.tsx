@@ -3,14 +3,14 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Provider, useDispatch, useSelector } from 'react-redux';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Text } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { store, RootState } from './src/store';
 import { loadStoredAuth } from './src/store/slices/authSlice';
 import { Ionicons } from '@expo/vector-icons';
 import { fetchProfiles, setActiveProfile } from './src/store/slices/profileSlice';
 
-// Screens
+// Screens - imported normally for React Native
 import WelcomeScreen from './src/screens/WelcomeScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
@@ -23,7 +23,6 @@ import MovieDetailScreen from './src/screens/MovieDetailScreen';
 import SeriesDetailScreen from './src/screens/SeriesDetailScreen';
 import VideoPlayerScreen from './src/screens/VideoPlayerScreen';
 import CategoryScreen from './src/screens/CategoryScreen';
-import EnhancedVideoPlayer from './src/screens/EnhancedVideoPlayer';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -49,6 +48,9 @@ function TabNavigator() {
         tabBarActiveTintColor: '#fff',
         tabBarInactiveTintColor: '#666',
         headerShown: false,
+        lazy: true,
+        unmountOnBlur: false,
+        freezeOnBlur: true,
         tabBarIcon: ({ color, size, focused }) => {
           let iconName: any = 'home';
           if (route.name === 'Home') {
@@ -104,11 +106,24 @@ const styles = StyleSheet.create({
   tabIconActive: {
     backgroundColor: '#333',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
+  },
+  loadingText: {
+    marginTop: 16,
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
 
 const LoadingScreen = () => (
-  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>
-    <ActivityIndicator size="large" color="#fff" />
+  <View style={styles.loadingContainer}>
+    <ActivityIndicator size="large" color="#E50914" />
+    <Text style={styles.loadingText}>Loading...</Text>
   </View>
 );
 
@@ -134,6 +149,8 @@ function AppNavigator() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: '#000' },
+        animation: 'fade',
+        animationDuration: 200,
       }}
     >
       {!isAuthenticated ? (
@@ -141,24 +158,14 @@ function AppNavigator() {
           <Stack.Screen name="Welcome" component={WelcomeScreen} />
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Register" component={RegisterScreen} />
-          <Stack.Screen name="ProfileSelection" component={ProfileSelectionScreen} />
         </>
-      ) : !activeProfile ? (
-        <Stack.Screen name="ProfileSelection" component={ProfileSelectionScreen} />
       ) : (
         <>
           <Stack.Screen name="Main" component={TabNavigator} />
+          <Stack.Screen name="ProfileSelection" component={ProfileSelectionScreen} />
           <Stack.Screen name="MovieDetail" component={MovieDetailScreen} />
           <Stack.Screen name="SeriesDetail" component={SeriesDetailScreen} />
           <Stack.Screen name="VideoPlayer" component={VideoPlayerScreen} />
-          <Stack.Screen name="EnhancedVideoPlayer">
-            {({ route, navigation }) => (
-              <EnhancedVideoPlayer
-                {...(route.params as any)}
-                onBack={() => navigation.goBack()}
-              />
-            )}
-          </Stack.Screen>
           <Stack.Screen name="Category" component={CategoryScreen} />
         </>
       )}
@@ -173,7 +180,20 @@ function App() {
 
   return (
     <Provider store={store}>
-      <NavigationContainer>
+      <NavigationContainer
+        theme={{
+          dark: true,
+          colors: {
+            primary: '#E50914',
+            background: '#000',
+            card: '#1a1a1a',
+            text: '#fff',
+            border: '#333',
+            notification: '#E50914',
+          },
+        }}
+        fallback={<LoadingScreen />}
+      >
         <StatusBar style="light" />
         <AppNavigator />
       </NavigationContainer>
