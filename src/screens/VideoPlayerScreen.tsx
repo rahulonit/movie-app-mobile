@@ -9,7 +9,7 @@ import apiService from '../services/api';
 import * as ScreenOrientation from 'expo-screen-orientation';
 
 export default function VideoPlayerScreen({ route, navigation }: any) {
-  const { cloudflareVideoId, title, contentId, contentType, episodeId } = route.params;
+  const { cloudflareVideoId, title, contentId, contentType, episodeId, genres } = route.params;
   const activeProfile = useSelector((state: RootState) => state.profile.activeProfile);
   const lastProgressSent = useRef<number>(0);
   const webRef = useRef<WebView>(null);
@@ -225,7 +225,9 @@ export default function VideoPlayerScreen({ route, navigation }: any) {
       if (data?.type === 'ready' || data?.type === 'playerReady') {
         setPlayerReady(true);
       } else if (data?.type === 'duration') {
-        setVideoDuration(data.duration / 1000); // Store in seconds
+        const dur = data.duration / 1000;
+        setVideoDuration(dur);
+        console.log('Duration set:', dur);
       } else if (data?.type === 'playstate') {
         setPaused(!!data.paused);
       } else if (data?.type === 'error') {
@@ -233,8 +235,14 @@ export default function VideoPlayerScreen({ route, navigation }: any) {
       } else if (data?.type === 'progress') {
         const { position, duration, paused: isPaused } = data;
         setPaused(!!isPaused);
-        setCurrentPosition(position / 1000); // Store in seconds
-        setVideoDuration(duration / 1000); // Store in seconds
+        const pos = position / 1000;
+        const dur = duration / 1000;
+        if (!isScrubbing) {
+          setCurrentPosition(pos);
+        }
+        if (dur > 0 && dur !== videoDuration) {
+          setVideoDuration(dur);
+        }
         
         // Skip intro detection (typically 20-90 seconds into video)
         const posInSeconds = position / 1000;
@@ -314,76 +322,68 @@ export default function VideoPlayerScreen({ route, navigation }: any) {
 
   const lastLeftTap = useRef<number>(0);
   const lastRightTap = useRef<number>(0);
-  const leftTapTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const rightTapTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const DOUBLE_TAP_MS = 300;
+  const leftTapCount = useRef<number>(0);
+  const rightTapCount = useRef<number>(0);
+  const DOUBLE_TAP_MS = 400;
 
   const onLeftTap = () => {
     const now = Date.now();
     const timeSinceLastTap = now - lastLeftTap.current;
     
-    if (timeSinceLastTap < DOUBLE_TAP_MS && timeSinceLastTap > 0) {
+    if (timeSinceLastTap < DOUBLE_TAP_MS) {
       // Double tap detected
-      if (leftTapTimeout.current) {
-        clearTimeout(leftTapTimeout.current);
-        leftTapTimeout.current = null;
+      leftTapCount.current++;
+      if (leftTapCount.current === 2) {
+        const seekTime = Math.max(0, currentPosition - 10);
+        sendCommand({ type: 'seek', time: seekTime });
+        setCurrentPosition(seekTime);
+        setSeekFeedback({ show: true, direction: 'left' });
+        setTimeout(() => setSeekFeedback({ show: false, direction: null }), 800);
+        leftTapCount.current = 0;
       }
-      // Use injectJavaScript for more reliable seek
-      webRef.current?.injectJavaScript(`
-        (function() {
-          if (window.__enqueueCommand) {
-            window.__enqueueCommand({ type: 'seek', time: Math.max(0, ${currentPosition} - 10) });
-          }
-        })();
-        true;
-      `);
-      setSeekFeedback({ show: true, direction: 'left' });
-      setTimeout(() => setSeekFeedback({ show: false, direction: null }), 800);
-      lastLeftTap.current = 0; // Reset to prevent triple tap
     } else {
       // First tap
+      leftTapCount.current = 1;
       showControlsTemporarily();
-      lastLeftTap.current = now;
-      // Auto-reset after timeout
-      if (leftTapTimeout.current) clearTimeout(leftTapTimeout.current);
-      leftTapTimeout.current = setTimeout(() => {
-        lastLeftTap.current = 0;
-      }, DOUBLE_TAP_MS + 50);
     }
+    lastLeftTap.current = now;
+    
+    // Reset count after timeout
+    setTimeout(() => {
+      if (Date.now() - lastLeftTap.current >= DOUBLE_TAP_MS) {
+        leftTapCount.current = 0;
+      }
+    }, DOUBLE_TAP_MS + 50);
   };
 
   const onRightTap = () => {
     const now = Date.now();
     const timeSinceLastTap = now - lastRightTap.current;
     
-    if (timeSinceLastTap < DOUBLE_TAP_MS && timeSinceLastTap > 0) {
+    if (timeSinceLastTap < DOUBLE_TAP_MS) {
       // Double tap detected
-      if (rightTapTimeout.current) {
-        clearTimeout(rightTapTimeout.current);
-        rightTapTimeout.current = null;
+      rightTapCount.current++;
+      if (rightTapCount.current === 2) {
+        const seekTime = Math.min(videoDuration, currentPosition + 10);
+        sendCommand({ type: 'seek', time: seekTime });
+        setCurrentPosition(seekTime);
+        setSeekFeedback({ show: true, direction: 'right' });
+        setTimeout(() => setSeekFeedback({ show: false, direction: null }), 800);
+        rightTapCount.current = 0;
       }
-      // Use injectJavaScript for more reliable seek
-      webRef.current?.injectJavaScript(`
-        (function() {
-          if (window.__enqueueCommand) {
-            window.__enqueueCommand({ type: 'seek', time: ${currentPosition} + 10 });
-          }
-        })();
-        true;
-      `);
-      setSeekFeedback({ show: true, direction: 'right' });
-      setTimeout(() => setSeekFeedback({ show: false, direction: null }), 800);
-      lastRightTap.current = 0; // Reset to prevent triple tap
     } else {
       // First tap
+      rightTapCount.current = 1;
       showControlsTemporarily();
-      lastRightTap.current = now;
-      // Auto-reset after timeout
-      if (rightTapTimeout.current) clearTimeout(rightTapTimeout.current);
-      rightTapTimeout.current = setTimeout(() => {
-        lastRightTap.current = 0;
-      }, DOUBLE_TAP_MS + 50);
     }
+    lastRightTap.current = now;
+    
+    // Reset count after timeout
+    setTimeout(() => {
+      if (Date.now() - lastRightTap.current >= DOUBLE_TAP_MS) {
+        rightTapCount.current = 0;
+      }
+    }, DOUBLE_TAP_MS + 50);
   };
 
   const togglePlayPause = () => {
@@ -480,15 +480,12 @@ export default function VideoPlayerScreen({ route, navigation }: any) {
   };
 
   const handleSliderComplete = (value: number) => {
-    setIsScrubbing(false);
-    webRef.current?.injectJavaScript(`
-      (function() {
-        if (window.__enqueueCommand) {
-          window.__enqueueCommand({ type: 'seek', time: ${Math.floor(value)} });
-        }
-      })();
-      true;
-    `);
+    const seekTime = Math.floor(value);
+    sendCommand({ type: 'seek', time: seekTime });
+    setCurrentPosition(seekTime);
+    setTimeout(() => {
+      setIsScrubbing(false);
+    }, 100);
   };
 
   const formatTime = (seconds: number) => {
@@ -514,6 +511,23 @@ export default function VideoPlayerScreen({ route, navigation }: any) {
         source={{ html }}
         onMessage={handleMessage}
       />
+
+      {/* Top Bar with Back Button, Title and Genres */}
+      {controlsVisible && (
+        <View style={styles.topBar}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={28} color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.titleContainer}>
+            <Text style={styles.videoTitle} numberOfLines={1}>{title}</Text>
+            {genres && genres.length > 0 && (
+              <Text style={styles.genresText} numberOfLines={1}>
+                {Array.isArray(genres) ? genres.join(' • ') : genres}
+              </Text>
+            )}
+          </View>
+        </View>
+      )}
 
       {/* Touch zones - leave bottom area for native controls */}
       <View style={styles.touchLayer} pointerEvents="box-none">
@@ -662,36 +676,33 @@ export default function VideoPlayerScreen({ route, navigation }: any) {
         </View>
       )}
 
-      {/* Volume Control Menu */}
+      {/* Volume Control Menu - Vertical */}
       {audioTracksMenuVisible && (
-        <View style={styles.volumeMenu}>
-          <View style={styles.volumeMenuHeader}>
-            <Ionicons name="volume-low" size={20} color="#fff" />
+        <View style={styles.volumeMenuVertical}>
+          <TouchableOpacity 
+            onPress={() => setAudioTracksMenuVisible(false)} 
+            style={styles.volumeCloseButton}
+          >
+            <Ionicons name="close" size={18} color="#fff" />
+          </TouchableOpacity>
+          <Ionicons name="volume-high" size={20} color="#fff" style={{ marginBottom: 8 }} />
+          <View style={styles.verticalSliderContainer}>
             <Slider
-              style={styles.volumeSlider}
+              style={styles.verticalSlider}
               minimumValue={0}
               maximumValue={1}
               value={volume}
               onValueChange={(val) => {
                 setVolume(val);
-                webRef.current?.injectJavaScript(`
-                  (function() {
-                    if (window.__enqueueCommand) {
-                      window.__enqueueCommand({ type: 'setVolume', volume: ${val} });
-                    }
-                  })();
-                  true;
-                `);
+                sendCommand({ type: 'setVolume', volume: val });
               }}
               minimumTrackTintColor="#E50914"
               maximumTrackTintColor="rgba(255,255,255,0.3)"
               thumbTintColor="#E50914"
+              vertical
             />
-            <Ionicons name="volume-high" size={20} color="#fff" />
-            <TouchableOpacity onPress={() => setAudioTracksMenuVisible(false)} style={{ marginLeft: 16 }}>
-              <Ionicons name="close" size={20} color="#fff" />
-            </TouchableOpacity>
           </View>
+          <Ionicons name="volume-low" size={20} color="#fff" style={{ marginTop: 8 }} />
         </View>
       )}
 
@@ -762,6 +773,38 @@ const styles = StyleSheet.create({
   player: {
     flex: 1,
     backgroundColor: 'black',
+  },
+  topBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingTop: 40,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    backgroundColor: 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)',
+    zIndex: 1000,
+  },
+  backButton: {
+    padding: 4,
+    marginRight: 12,
+  },
+  titleContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  videoTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  genresText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 13,
+    fontWeight: '400',
   },
   overlay: {
     position: 'absolute',
@@ -837,6 +880,31 @@ const styles = StyleSheet.create({
   slider: {
     width: '100%',
     height: 30,
+  },
+  volumeMenuVertical: {
+    position: 'absolute',
+    bottom: 120,
+    right: 16,
+    backgroundColor: 'rgba(20,20,20,0.95)',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    minHeight: 200,
+  },
+  volumeCloseButton: {
+    alignSelf: 'flex-end',
+    marginBottom: 12,
+  },
+  verticalSliderContainer: {
+    height: 120,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  verticalSlider: {
+    width: 120,
+    height: 30,
+    transform: [{ rotate: '-90deg' }],
   },
   volumeMenu: {
     position: 'absolute',

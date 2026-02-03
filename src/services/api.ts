@@ -91,7 +91,7 @@ class ApiService {
       return;
     }
 
-    // Honor explicit override first (production-ready path)
+    // Priority 2: Explicit app.json extra (production-ready path)
     try {
       const extra = (Constants as any)?.manifest?.extra || (Constants as any)?.expoConfig?.extra;
       const explicit = extra?.API_BASE_URL || extra?.API_HOST;
@@ -102,7 +102,9 @@ class ApiService {
         console.log('✅ Resolved API base URL from expo extra (app.json)', this.baseURL);
         return;
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('Error reading expo extra:', e);
+    }
 
     // IMPORTANT: Only probe localhost in development mode when no explicit URL is set
     if (!__DEV__) {
