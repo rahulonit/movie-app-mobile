@@ -60,7 +60,7 @@ export default function MovieDetailScreen({ route, navigation }: any) {
           const response = await apiService.getRelatedContent(currentMovie._id, 'Movie');
           setRecommendedMovies(response.data || []);
         } catch (error) {
-          console.log('Could not fetch recommendations:', error);
+          if (__DEV__) console.log('Could not fetch recommendations:', error);
         }
       }
     };
@@ -603,4 +603,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

@@ -37,19 +37,21 @@ export default function SeriesDetailScreen({ route, navigation }: any) {
   const [isRated, setIsRated] = useState(false);
 
   useEffect(() => {
-    console.log("SeriesDetailScreen: Fetching series with id:", id);
+    if (__DEV__) console.log("SeriesDetailScreen: Fetching series with id:", id);
     dispatch(fetchSeriesById(id)).then((result) => {
-      console.log("SeriesDetailScreen: Fetch result:", result);
+      if (__DEV__) console.log("SeriesDetailScreen: Fetch result:", result);
       if (result.type.endsWith("/rejected")) {
-        console.error(
-          "SeriesDetailScreen: Failed to fetch series:",
-          result.payload,
-        );
+        if (__DEV__)
+          console.error(
+            "SeriesDetailScreen: Failed to fetch series:",
+            result.payload,
+          );
       } else {
-        console.log(
-          "SeriesDetailScreen: Series loaded successfully:",
-          result.payload,
-        );
+        if (__DEV__)
+          console.log(
+            "SeriesDetailScreen: Series loaded successfully:",
+            result.payload,
+          );
       }
     });
   }, [id]);
@@ -138,14 +140,15 @@ export default function SeriesDetailScreen({ route, navigation }: any) {
   };
 
   if (!currentSeries || isLoading) {
-    console.log(
-      "SeriesDetailScreen: Loading state - currentSeries:",
-      !!currentSeries,
-      "isLoading:",
-      isLoading,
-      "error:",
-      error,
-    );
+    if (__DEV__)
+      console.log(
+        "SeriesDetailScreen: Loading state - currentSeries:",
+        !!currentSeries,
+        "isLoading:",
+        isLoading,
+        "error:",
+        error,
+      );
     return (
       <View style={[styles.container, styles.centered]}>
         {error ? (

@@ -227,11 +227,11 @@ export default function VideoPlayerScreen({ route, navigation }: any) {
       } else if (data?.type === 'duration') {
         const dur = data.duration / 1000;
         setVideoDuration(dur);
-        console.log('Duration set:', dur);
+        if (__DEV__) console.log('Duration set:', dur);
       } else if (data?.type === 'playstate') {
         setPaused(!!data.paused);
       } else if (data?.type === 'error') {
-        console.log('Player error:', data.message);
+        if (__DEV__) console.log('Player error:', data.message);
       } else if (data?.type === 'progress') {
         const { position, duration, paused: isPaused } = data;
         setPaused(!!isPaused);

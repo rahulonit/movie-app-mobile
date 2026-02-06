@@ -25,34 +25,42 @@ function detectPackagerHost(): string | null {
   return null;
 }
 
-const detectedHost = detectPackagerHost();
-let API_HOST: string;
-if (__DEV__ && detectedHost) {
-  const isLocal = detectedHost === 'localhost' || detectedHost === '127.0.0.1';
-  if (Platform.OS === 'android' && isLocal) {
-    API_HOST = `10.0.2.2:5002`;
-  } else {
-    API_HOST = `${detectedHost}:5002`;
-  }
-} else {
-  API_HOST = Platform.select({
-    android: '10.0.2.2:5002',
-    ios: 'localhost:5002',
-    default: 'localhost:5002',
-  }) as string;
-}
+const logDev = (...args: any[]) => {
+  if (__DEV__) console.log(...args);
+};
 
-// When running in a browser prefer the page hostname so requests go to the same machine
-if (Platform.OS === 'web' && typeof window !== 'undefined') {
-  try {
-    const host = window.location.hostname;
-    if (host) {
-      API_HOST = `${host}:5002`;
+let API_BASE_URL = '';
+
+if (__DEV__) {
+  const detectedHost = detectPackagerHost();
+  let API_HOST: string;
+  if (detectedHost) {
+    const isLocal = detectedHost === 'localhost' || detectedHost === '127.0.0.1';
+    if (Platform.OS === 'android' && isLocal) {
+      API_HOST = `10.0.2.2:5002`;
+    } else {
+      API_HOST = `${detectedHost}:5002`;
     }
-  } catch (e) {}
-}
+  } else {
+    API_HOST = Platform.select({
+      android: '10.0.2.2:5002',
+      ios: 'localhost:5002',
+      default: 'localhost:5002',
+    }) as string;
+  }
 
-const API_BASE_URL = `http://${API_HOST}/api`;
+  // When running in a browser prefer the page hostname so requests go to the same machine
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    try {
+      const host = window.location.hostname;
+      if (host) {
+        API_HOST = `${host}:5002`;
+      }
+    } catch (e) {}
+  }
+
+  API_BASE_URL = `http://${API_HOST}/api`;
+}
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
@@ -74,7 +82,7 @@ class ApiService {
 
   constructor() {
     this.baseURL = API_BASE_URL;
-    console.log('initial API_BASE_URL:', API_BASE_URL);
+    logDev('initial API_BASE_URL:', API_BASE_URL);
     this.resolvePromise = this.resolveAndSetBaseURL();
   }
 
@@ -87,7 +95,7 @@ class ApiService {
       const normalized = envBase.startsWith('http') ? envBase : `http://${envBase}`;
       this.baseURL = normalized.endsWith('/api') ? normalized : `${normalized.replace(/\/$/, '')}/api`;
       this.resolved = true;
-      console.log('✅ Resolved API base URL from EXPO_PUBLIC env', this.baseURL);
+      logDev('Resolved API base URL from EXPO_PUBLIC env', this.baseURL);
       return;
     }
 
@@ -99,16 +107,15 @@ class ApiService {
         const normalized = explicit.startsWith('http') ? explicit : `http://${explicit}`;
         this.baseURL = normalized.endsWith('/api') ? normalized : `${normalized.replace(/\/$/, '')}/api`;
         this.resolved = true;
-        console.log('✅ Resolved API base URL from expo extra (app.json)', this.baseURL);
+        logDev('Resolved API base URL from expo extra (app.json)', this.baseURL);
         return;
       }
     } catch (e) {
-      console.error('Error reading expo extra:', e);
+      logDev('Error reading expo extra:', e);
     }
 
     // IMPORTANT: Only probe localhost in development mode when no explicit URL is set
     if (!__DEV__) {
-      console.log('✅ Production mode: Using default baseURL', this.baseURL);
       this.resolved = true;
       return;
     }
@@ -150,7 +157,7 @@ class ApiService {
 
     const uniqueCandidates = Array.from(new Set(candidates));
 
-    console.log('API host probe candidates:', uniqueCandidates);
+    logDev('API host probe candidates:', uniqueCandidates);
     for (const host of uniqueCandidates) {
       const url = `http://${host}:5002/health`;
       try {
@@ -158,15 +165,15 @@ class ApiService {
         if (ok) {
           const newBase = `http://${host}:5002/api`;
           this.baseURL = newBase;
-          console.log('Resolved API base URL to', newBase);
+          logDev('Resolved API base URL to', newBase);
           this.resolved = true;
           return;
         }
       } catch (e) {}
     }
 
-    console.warn('Could not auto-resolve API host; using', this.baseURL);
-    console.warn('If you are on a physical device, set expo.extra.API_HOST = "192.168.x.x" or use adb reverse for Android emulator.');
+    logDev('Could not auto-resolve API host; using', this.baseURL);
+    logDev('If you are on a physical device, set expo.extra.API_HOST = "192.168.x.x" or use adb reverse for Android emulator.');
   }
 
   private async probeUrl(url: string, timeoutMs = 2000): Promise<boolean> {
@@ -262,6 +269,10 @@ class ApiService {
 
   private async request<T = any>(path: string, options: RequestOptions = {}): Promise<T> {
     await this.ensureResolved();
+
+    if (!this.baseURL) {
+      throw new Error('API base URL is not configured. Set EXPO_PUBLIC_API_BASE_URL or app.json extra.API_BASE_URL.');
+    }
 
     const {
       method = 'GET',
@@ -368,15 +379,7 @@ class ApiService {
   }
 
   async getSeriesById(id: string) {
-    console.log('ApiService: getSeriesById called with id:', id);
-    try {
-      const result = await this.request(`/series/${id}`);
-      console.log('ApiService: getSeriesById response:', result);
-      return result;
-    } catch (error: any) {
-      console.error('ApiService: getSeriesById error:', error?.message || error);
-      throw error;
-    }
+    return this.request(`/series/${id}`);
   }
 
   async searchContent(query: string, filters?: Record<string, any>) {

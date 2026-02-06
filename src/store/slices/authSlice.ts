@@ -62,7 +62,7 @@ export const register = createAsyncThunk(
   ) => {
     try {
       const response = await apiService.register(email, password, profileName);
-      console.log('register response:', response);
+      if (__DEV__) console.log('register response:', response);
       const { user, accessToken, refreshToken } = response;
 
       await tokenService.setAccessToken(accessToken);
@@ -71,7 +71,7 @@ export const register = createAsyncThunk(
 
       return { user, accessToken, refreshToken };
     } catch (error: any) {
-      console.error('register error:', error?.response || error?.message || error);
+      if (__DEV__) console.error('register error:', error?.response || error?.message || error);
       const resp = error?.response?.data;
       if (resp) {
         if (resp.errors && Array.isArray(resp.errors)) {
