@@ -1,3 +1,4 @@
+
 import { Platform, NativeModules } from 'react-native';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -29,38 +30,8 @@ const logDev = (...args: any[]) => {
   if (__DEV__) console.log(...args);
 };
 
-let API_BASE_URL = '';
-
-if (__DEV__) {
-  const detectedHost = detectPackagerHost();
-  let API_HOST: string;
-  if (detectedHost) {
-    const isLocal = detectedHost === 'localhost' || detectedHost === '127.0.0.1';
-    if (Platform.OS === 'android' && isLocal) {
-      API_HOST = `10.0.2.2:5002`;
-    } else {
-      API_HOST = `${detectedHost}:5002`;
-    }
-  } else {
-    API_HOST = Platform.select({
-      android: '10.0.2.2:5002',
-      ios: 'localhost:5002',
-      default: 'localhost:5002',
-    }) as string;
-  }
-
-  // When running in a browser prefer the page hostname so requests go to the same machine
-  if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    try {
-      const host = window.location.hostname;
-      if (host) {
-        API_HOST = `${host}:5002`;
-      }
-    } catch (e) {}
-  }
-
-  API_BASE_URL = `http://${API_HOST}/api`;
-}
+// Always start with production URL - resolveAndSetBaseURL will check for local dev servers if needed
+let API_BASE_URL = 'https://movie-app-backend-indol.vercel.app/api';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
@@ -82,36 +53,51 @@ class ApiService {
 
   constructor() {
     this.baseURL = API_BASE_URL;
-    logDev('initial API_BASE_URL:', API_BASE_URL);
+    if (__DEV__) {
+      console.log('[ApiService] Constructor - initial baseURL:', this.baseURL);
+      console.log('[ApiService] Platform:', Platform.OS);
+      console.log('[ApiService] __DEV__:', __DEV__);
+    }
     this.resolvePromise = this.resolveAndSetBaseURL();
   }
 
   // Probe candidate hosts and set baseURL to the first reachable one.
   private async resolveAndSetBaseURL() {
     if (this.resolved) return;
-    // Highest priority: public env vars (usable with EAS/Expo envs)
+    
+    if (__DEV__) {
+      console.log('[ApiService] resolveAndSetBaseURL - starting resolution');
+      console.log('[ApiService] Current baseURL before resolution:', this.baseURL);
+    }
+    
+    // Priority 1: Explicit app.json extra (production URL - always check first)
+    try {
+      const extra = (Constants as any)?.manifest?.extra || (Constants as any)?.expoConfig?.extra;
+      if (__DEV__) {
+        console.log('[ApiService] Constants.manifest:', (Constants as any)?.manifest);
+        console.log('[ApiService] Constants.expoConfig:', (Constants as any)?.expoConfig);
+        console.log('[ApiService] Extra from config:', extra);
+      }
+      const explicit = extra?.API_BASE_URL || extra?.API_HOST;
+      if (explicit) {
+        const normalized = explicit.startsWith('http') ? explicit : `https://${explicit}`;
+        this.baseURL = normalized.endsWith('/api') ? normalized : `${normalized.replace(/\/$/, '')}/api`;
+        this.resolved = true;
+        console.log('[ApiService] ✅ Resolved API base URL from expo extra (app.json):', this.baseURL);
+        return;
+      }
+    } catch (e) {
+      if (__DEV__) console.log('[ApiService] Error reading expo extra:', e);
+    }
+
+    // Priority 2: public env vars (usable with EAS/Expo envs)
     const envBase = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_HOST;
     if (envBase) {
-      const normalized = envBase.startsWith('http') ? envBase : `http://${envBase}`;
+      const normalized = envBase.startsWith('http') ? envBase : `https://${envBase}`;
       this.baseURL = normalized.endsWith('/api') ? normalized : `${normalized.replace(/\/$/, '')}/api`;
       this.resolved = true;
       logDev('Resolved API base URL from EXPO_PUBLIC env', this.baseURL);
       return;
-    }
-
-    // Priority 2: Explicit app.json extra (production-ready path)
-    try {
-      const extra = (Constants as any)?.manifest?.extra || (Constants as any)?.expoConfig?.extra;
-      const explicit = extra?.API_BASE_URL || extra?.API_HOST;
-      if (explicit) {
-        const normalized = explicit.startsWith('http') ? explicit : `http://${explicit}`;
-        this.baseURL = normalized.endsWith('/api') ? normalized : `${normalized.replace(/\/$/, '')}/api`;
-        this.resolved = true;
-        logDev('Resolved API base URL from expo extra (app.json)', this.baseURL);
-        return;
-      }
-    } catch (e) {
-      logDev('Error reading expo extra:', e);
     }
 
     // IMPORTANT: Only probe localhost in development mode when no explicit URL is set
@@ -351,6 +337,7 @@ class ApiService {
   async logout() {
     const refreshToken = await tokenService.getRefreshToken();
     await tokenService.clearAll();
+    // Fire-and-forget server logout (best effort)
     (async () => {
       try {
         await this.request('/auth/logout', {
@@ -360,7 +347,10 @@ class ApiService {
           skipRefresh: true,
         });
       } catch (e: any) {
-        console.warn('Server logout failed (will retry later):', e?.message || e);
+        // Silently fail - tokens already cleared locally
+        if (__DEV__) {
+          console.log('[Logout] Server notification failed (non-critical):', e?.message || 'Network error');
+        }
       }
     })();
   }

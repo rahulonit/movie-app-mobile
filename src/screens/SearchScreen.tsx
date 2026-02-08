@@ -83,18 +83,20 @@ export default function SearchScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#141414',
   },
   searchContainer: {
     padding: 16,
     paddingTop: 60,
   },
   searchInput: {
-    backgroundColor: '#333',
+    backgroundColor: '#1f1f1f',
     borderRadius: 8,
     padding: 16,
     fontSize: 16,
     color: '#fff',
+    borderWidth: 1,
+    borderColor: '#2b2b2b',
   },
   list: {
     padding: 16,
@@ -102,9 +104,11 @@ const styles = StyleSheet.create({
   resultCard: {
     flexDirection: 'row',
     marginBottom: 16,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#1f1f1f',
     borderRadius: 8,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#2b2b2b',
   },
   poster: {
     width: 100,
@@ -122,12 +126,12 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   meta: {
-    color: '#808080',
+    color: '#b3b3b3',
     fontSize: 14,
     marginBottom: 4,
   },
   genres: {
-    color: '#808080',
+    color: '#8f8f8f',
     fontSize: 12,
   },
   empty: {
@@ -136,7 +140,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    color: '#808080',
+    color: '#8f8f8f',
     fontSize: 16,
   },
 });

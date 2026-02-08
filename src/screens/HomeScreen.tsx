@@ -15,7 +15,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { RootState, AppDispatch } from '../store';
-import { fetchHomeFeed } from '../store/slices/contentSlice';
+import { fetchHomeFeed, fetchRecommendations } from '../store/slices/contentSlice';
 import { addToMyList, fetchMyList, removeFromMyList } from '../store/slices/profileSlice';
 
 const { width } = Dimensions.get('window');
@@ -25,8 +25,15 @@ const FEATURE_CARD_SPACING = 12;
 
 export default function HomeScreen({ navigation }: any) {
 	const dispatch = useDispatch<AppDispatch>();
-	const { homeFeed, isLoading } = useSelector((state: RootState) => state.content);
+	const { homeFeed, recommendations, isLoading } = useSelector((state: RootState) => state.content);
 	const { activeProfile, myList } = useSelector((state: RootState) => state.profile);
+
+	// Fetch recommendations on mount and when activeProfile changes
+	useEffect(() => {
+		if (activeProfile && activeProfile._id) {
+			dispatch(fetchRecommendations(activeProfile._id));
+		}
+	}, [activeProfile, dispatch]);
 
 	const [refreshing, setRefreshing] = useState(false);
 	const [selectedTab, setSelectedTab] = useState('All');
@@ -209,8 +216,8 @@ export default function HomeScreen({ navigation }: any) {
 							contentContainerStyle={styles.featuredList}
 							keyExtractor={(item, index) => `${item._id || 'featured'}-${index}`}
 							renderItem={({ item, index }) => (
-								<View
-									style={[
+								<TouchableOpacity onPress={() => handleView(item)}>
+								<View style={[
 										styles.featuredCard,
 										{
 											width: FEATURE_CARD_WIDTH,
@@ -231,7 +238,7 @@ export default function HomeScreen({ navigation }: any) {
 									<View style={styles.featuredContent}>
 										<View style={styles.featuredInfo}>
 											<View style={styles.featuredTextContainer}>
-												<TouchableOpacity onPress={() => handleView(item)}><Text style={styles.featuredTitle}>{item.title}</Text></TouchableOpacity>
+												<Text style={styles.featuredTitle}>{item.title}</Text>
 												<View style={styles.tags}>
 													{item.genres?.slice(0, 3).map((genre: string, idx: number) => (
 														<Text key={idx} style={styles.tag_genre}>
@@ -254,6 +261,7 @@ export default function HomeScreen({ navigation }: any) {
 										
 									</View>
 								</View>
+								</TouchableOpacity>
 							)}
 						/>
 
@@ -269,6 +277,7 @@ export default function HomeScreen({ navigation }: any) {
 				)}
 
 				{/* Content Sections */}
+				{renderSection('Recommended for You', recommendations || [], 'recommendations')}
 				{renderSection('Continue Watching', homeFeed?.continueWatching || [], 'continueWatching')}
 				{renderSection('Trending Now', homeFeed?.trending || [], 'trending')}
 				{renderSection('Trending Series', homeFeed?.trendingSeries || [], 'trendingSeries')}
@@ -285,7 +294,7 @@ export default function HomeScreen({ navigation }: any) {
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		backgroundColor: '#181818',
+		backgroundColor: '#141414',
 	},
 	header: {
 		flexDirection: 'row',
@@ -294,7 +303,7 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 16,
 		paddingTop: 50,
 		paddingBottom: 16,
-		backgroundColor: '#181818',
+		backgroundColor: '#141414',
 	},
 	headerLeft: {
 		flexDirection: 'row',
@@ -303,8 +312,8 @@ const styles = StyleSheet.create({
 	},
 	headerTitle: {
 		fontSize: 24,
-		fontWeight: '600',
-		color: '#fff',
+		fontWeight: '800',
+		color: '#E50914',
 	},
 	headerRight: {
 		flexDirection: 'row',
@@ -324,18 +333,18 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 16,
 		paddingVertical: 8,
 		borderRadius: 20,
-		backgroundColor: 'transparent',
 		borderWidth: 1,
-		borderColor: '#666',
+		borderColor: '#2b2b2b',
+		backgroundColor: '#1b1b1b',
 		flexDirection: 'row',
 		alignItems: 'center',
 	},
 	tabActive: {
-		backgroundColor: 'transparent',
-		borderColor: '#fff',
+		backgroundColor: '#E50914',
+		borderColor: '#E50914',
 	},
 	tabText: {
-		color: '#999',
+		color: '#cfcfcf',
 		fontSize: 14,
 		fontWeight: '500',
 	},
@@ -406,7 +415,7 @@ const styles = StyleSheet.create({
 	},
 	tag_genre: {
 		color: '#fff',
-		backgroundColor: '#666',
+		backgroundColor: '#E50914',
 		paddingHorizontal: 6,
 		paddingVertical: 2,
 		borderRadius: 4,
@@ -422,7 +431,7 @@ const styles = StyleSheet.create({
 		gap: 12,
 	},
 	getButton: {
-		backgroundColor: '#4a4a4a',
+		backgroundColor: '#fff',
 		paddingHorizontal: 24,
 		paddingVertical: 12,
 		borderRadius: 8,
@@ -433,12 +442,12 @@ const styles = StyleSheet.create({
 		gap: 8,
 	},
 	getButtonText: {
-		color: '#fff',
+		color: '#000',
 		fontWeight: '600',
 		fontSize: 16,
 	},
 	myListButton: {
-		backgroundColor: '#3a3a3a',
+		backgroundColor: '#2b2b2b',
 		paddingHorizontal: 24,
 		paddingVertical: 12,
 		borderRadius: 8,
@@ -448,7 +457,7 @@ const styles = StyleSheet.create({
 	},
 	myListButtonActive: {
 		borderWidth: 1,
-		borderColor: '#fff',
+		borderColor: '#E50914',
 	},
 	myListButtonText: {
 		color: '#fff',
@@ -467,10 +476,10 @@ const styles = StyleSheet.create({
 		width: 8,
 		height: 8,
 		borderRadius: 4,
-		backgroundColor: '#444',
+		backgroundColor: '#2b2b2b',
 	},
 	indicatorDotActive: {
-		backgroundColor: '#fff',
+		backgroundColor: '#E50914',
 		width: 10,
 		height: 10,
 	},
@@ -487,7 +496,7 @@ const styles = StyleSheet.create({
 	sectionTitle: {
 		color: '#fff',
 		fontSize: 20,
-		fontWeight: 'bold',
+		fontWeight: '700',
 	},
 	seeAllButton: {
 		flexDirection: 'row',
@@ -495,7 +504,7 @@ const styles = StyleSheet.create({
 		gap: 4,
 	},
 	seeAllText: {
-		color: '#fff',
+		color: '#b3b3b3',
 		fontSize: 14,
 		fontWeight: '500',
 	},
@@ -510,6 +519,6 @@ const styles = StyleSheet.create({
 	poster: {
 		width: ITEM_WIDTH,
 		height: ITEM_WIDTH * 1.5,
-		borderRadius: 8,
+		borderRadius: 6,
 	},
 });

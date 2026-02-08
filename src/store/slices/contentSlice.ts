@@ -1,11 +1,13 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import apiService from '../../services/api';
 
+
 interface ContentState {
   homeFeed: any | null;
   currentMovie: any | null;
   currentSeries: any | null;
   searchResults: any[];
+  recommendations: any[];
   isLoading: boolean;
   error: string | null;
 }
@@ -15,9 +17,22 @@ const initialState: ContentState = {
   currentMovie: null,
   currentSeries: null,
   searchResults: [],
+  recommendations: [],
   isLoading: false,
   error: null,
-};
+}
+// Personalized recommendations
+export const fetchRecommendations = createAsyncThunk(
+  'content/fetchRecommendations',
+  async (profileId: string | undefined, { rejectWithValue }) => {
+    try {
+      const response = await (apiService as any).getRecommendations(profileId);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch recommendations');
+    }
+  }
+);
 
 // Async thunks
 export const fetchHomeFeed = createAsyncThunk(
@@ -106,6 +121,20 @@ const contentSlice = createSlice({
       state.homeFeed = action.payload;
     });
     builder.addCase(fetchHomeFeed.rejected, (state, action) => {
+      state.isLoading = false;
+      state.error = action.payload as string;
+    });
+
+    // Recommendations
+    builder.addCase(fetchRecommendations.pending, (state) => {
+      state.isLoading = true;
+      state.error = null;
+    });
+    builder.addCase(fetchRecommendations.fulfilled, (state, action) => {
+      state.isLoading = false;
+      state.recommendations = action.payload;
+    });
+    builder.addCase(fetchRecommendations.rejected, (state, action) => {
       state.isLoading = false;
       state.error = action.payload as string;
     });

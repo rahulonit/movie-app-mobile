@@ -97,12 +97,12 @@ export default function MyListScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#141414',
   },
   header: {
-    color: '#fff',
+    color: '#E50914',
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: '800',
     padding: 16,
     paddingTop: 60,
   },
@@ -117,7 +117,8 @@ const styles = StyleSheet.create({
   poster: {
     width: '100%',
     aspectRatio: 2 / 3,
-    borderRadius: 8,
+    borderRadius: 6,
+    backgroundColor: '#1f1f1f',
   },
   title: {
     color: '#fff',
@@ -137,7 +138,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   emptySubtext: {
-    color: '#808080',
+    color: '#b3b3b3',
     fontSize: 14,
     textAlign: 'center',
   },

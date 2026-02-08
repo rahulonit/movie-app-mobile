@@ -101,19 +101,19 @@ export default function AccountScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#141414',
   },
   header: {
-    color: '#fff',
+    color: '#E50914',
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: '800',
     padding: 16,
     paddingTop: 60,
   },
   section: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: '#2b2b2b',
   },
   sectionTitle: {
     color: '#fff',
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   label: {
-    color: '#808080',
+    color: '#b3b3b3',
     fontSize: 16,
   },
   value: {
@@ -139,10 +139,10 @@ const styles = StyleSheet.create({
     color: '#E50914',
   },
   free: {
-    color: '#808080',
+    color: '#b3b3b3',
   },
   button: {
-    backgroundColor: '#333',
+    backgroundColor: '#2b2b2b',
     padding: 16,
     margin: 16,
     borderRadius: 8,
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   version: {
-    color: '#808080',
+    color: '#8f8f8f',
     textAlign: 'center',
     marginVertical: 20,
     fontSize: 12,

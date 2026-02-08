@@ -21,6 +21,9 @@ import apiService from '../services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+// Timeline bar height
+const TIMELINE_HEIGHT = 6;
+
 export default function MovieDetailScreen({ route, navigation }: any) {
   const { id } = route.params;
   const dispatch = useDispatch<AppDispatch>();
@@ -29,6 +32,30 @@ export default function MovieDetailScreen({ route, navigation }: any) {
   const [inMyList, setInMyList] = useState(false);
   const [castMembers, setCastMembers] = useState<any[]>([]);
   const [recommendedMovies, setRecommendedMovies] = useState<any[]>([]);
+  const [watchedProgress, setWatchedProgress] = useState(0); // in seconds
+  const [videoDuration, setVideoDuration] = useState(0); // in seconds
+  // Fetch last watched progress for this movie
+  useEffect(() => {
+    const fetchProgress = async () => {
+      if (!activeProfile || !currentMovie?._id) return;
+      try {
+        const res = await apiService.getWatchHistory(activeProfile._id);
+        const history = res.data?.watchHistory || [];
+        const entry = history.find((h: any) => h.contentId === currentMovie._id);
+        if (entry) {
+          setWatchedProgress(Math.floor((entry.progress || 0) / 1000));
+          setVideoDuration(Math.floor((entry.duration || currentMovie.duration * 60 || 0) / 1000));
+        } else {
+          setWatchedProgress(0);
+          setVideoDuration(Math.floor((currentMovie.duration * 60) || 0));
+        }
+      } catch (e) {
+        setWatchedProgress(0);
+        setVideoDuration(Math.floor((currentMovie.duration * 60) || 0));
+      }
+    };
+    fetchProgress();
+  }, [activeProfile, currentMovie]);
 
   useEffect(() => {
     dispatch(fetchMovieById(id));
@@ -77,6 +104,7 @@ export default function MovieDetailScreen({ route, navigation }: any) {
       title: currentMovie.title,
       contentId: currentMovie._id,
       contentType: 'Movie',
+      startTime: watchedProgress, // pass last watched time in seconds
     });
   };
 
@@ -167,12 +195,13 @@ export default function MovieDetailScreen({ route, navigation }: any) {
             style={styles.heroGradient}
           />
 
-          {/* Centered Play Button */}
-          <TouchableOpacity style={styles.centerPlayButton} onPress={handlePlayMovie}>
-            <View style={styles.playButtonCircle}>
-              <MaterialIcons name="play-arrow" size={48} color="#fff" />
+          {/* Timeline Progress Bar */}
+          {videoDuration > 0 && (
+            <View style={styles.timelineBarContainer}>
+              <View style={styles.timelineBarBg} />
+              <View style={[styles.timelineBarFg, { width: `${Math.min(100, (watchedProgress / videoDuration) * 100)}%` }]} />
             </View>
-          </TouchableOpacity>
+          )}
 
           {/* Top Bar with Back and Favorite */}
           <View style={styles.topBar}>
@@ -222,16 +251,7 @@ export default function MovieDetailScreen({ route, navigation }: any) {
               <MaterialIcons name="play-arrow" size={28} color="#000" />
               <Text style={styles.playButtonText}>Play</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.listButton} onPress={handleToggleMyList}>
-              <Ionicons
-                name={inMyList ? 'checkmark' : 'add'}
-                size={24}
-                color="#fff"
-              />
-              <Text style={styles.listButtonText}>
-                {inMyList ? 'In My List' : 'My List'}
-              </Text>
-            </TouchableOpacity>
+            
           </View>
 
           {/* About Section */}
@@ -334,22 +354,46 @@ export default function MovieDetailScreen({ route, navigation }: any) {
 }
 
 const styles = StyleSheet.create({
+    timelineBarContainer: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: TIMELINE_HEIGHT,
+      zIndex: 20,
+      justifyContent: 'center',
+      alignItems: 'flex-start',
+    },
+    timelineBarBg: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      height: TIMELINE_HEIGHT,
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      borderRadius: TIMELINE_HEIGHT / 2,
+    },
+    timelineBarFg: {
+      height: TIMELINE_HEIGHT,
+      backgroundColor: '#E50914',
+      borderRadius: TIMELINE_HEIGHT / 2,
+    },
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: '#141414',
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0a0a0a',
+    backgroundColor: '#141414',
   },
   loadingText: {
     color: '#fff',
     fontSize: 16,
   },
   heroSection: {
-    height: Dimensions.get('window').height * 0.55,
+    // 9:16 aspect ratio
+    height: Dimensions.get('window').width * 16 / 9,
     position: 'relative',
   },
   heroPoster: {
@@ -361,7 +405,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: '70%',
+    height: '80%',
   },
   topBar: {
     position: 'absolute',
@@ -377,7 +421,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(20, 20, 20, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -392,7 +436,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -410,7 +454,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 16,
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   metaPills: {
     flexDirection: 'row',
@@ -422,13 +466,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: '#1f1f1f',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: '#2b2b2b',
   },
   ratingPill: {
-    backgroundColor: 'rgba(255, 215, 0, 0.15)',
-    borderColor: 'rgba(255, 215, 0, 0.4)',
+    backgroundColor: 'rgba(229, 9, 20, 0.15)',
+    borderColor: 'rgba(229, 9, 20, 0.4)',
   },
   pillText: {
     color: '#fff',
@@ -458,14 +502,14 @@ const styles = StyleSheet.create({
   listButton: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: '#2b2b2b',
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: '#333',
   },
   listButtonText: {
     color: '#fff',
@@ -484,7 +528,7 @@ const styles = StyleSheet.create({
   },
   aboutText: {
     fontSize: 15,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: '#b3b3b3',
     lineHeight: 24,
   },
   infoRow: {
@@ -493,15 +537,15 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   infoPill: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#1f1f1f',
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: '#2b2b2b',
   },
   infoPillLabel: {
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: '#8f8f8f',
     marginBottom: 4,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
@@ -545,7 +589,7 @@ const styles = StyleSheet.create({
     width: 130,
     height: 195,
     borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: '#1f1f1f',
     marginBottom: 8,
   },
   recommendedGradient: {
@@ -599,7 +643,7 @@ const styles = StyleSheet.create({
   },
   ratingValue: {
     fontSize: 14,
-    color: '#FFD700',
+    color: '#E50914',
     fontWeight: '600',
   },
 });

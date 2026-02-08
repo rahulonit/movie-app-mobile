@@ -7,11 +7,12 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
-  ScrollView,
+  ScrollView,Dimensions,
   Modal,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 import { Ionicons } from "@expo/vector-icons";
+
 import { AppDispatch, RootState } from "../store";
 import { fetchSeriesById } from "../store/slices/contentSlice";
 import {
@@ -19,8 +20,16 @@ import {
   removeFromMyList,
   fetchMyList,
 } from "../store/slices/profileSlice";
+import apiService from '../services/api';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const TIMELINE_HEIGHT = 6;
 export default function SeriesDetailScreen({ route, navigation }: any) {
+  // ...existing code...
+  const [episodeProgressMap, setEpisodeProgressMap] = useState<Record<string, {progress: number, duration: number}>>({});
+  // (Removed duplicate declarations)
+  // ...existing code...
+
   const { id } = route.params;
   const dispatch = useDispatch<AppDispatch>();
   const { currentSeries, isLoading, error } = useSelector(
@@ -29,6 +38,29 @@ export default function SeriesDetailScreen({ route, navigation }: any) {
   const { activeProfile, myList } = useSelector(
     (state: RootState) => state.profile,
   );
+  // Fetch watch history for all episodes in this series
+  useEffect(() => {
+    const fetchProgress = async () => {
+      if (!activeProfile || !currentSeries?._id) return;
+      try {
+        const res = await apiService.getWatchHistory(activeProfile._id);
+        const history = res.data?.watchHistory || [];
+        const map: Record<string, {progress: number, duration: number}> = {};
+        for (const h of history) {
+          if (h.contentId === currentSeries._id && h.episodeId) {
+            map[h.episodeId] = {
+              progress: Math.floor((h.progress || 0) / 1000),
+              duration: Math.floor((h.duration || 0) / 1000),
+            };
+          }
+        }
+        setEpisodeProgressMap(map);
+      } catch (e) {
+        setEpisodeProgressMap({});
+      }
+    };
+    fetchProgress();
+  }, [activeProfile, currentSeries]);
   const [refreshing, setRefreshing] = useState(false);
   const [activeSeason, setActiveSeason] = useState<number | null>(null);
   const [inMyList, setInMyList] = useState(false);
@@ -95,12 +127,15 @@ export default function SeriesDetailScreen({ route, navigation }: any) {
 
   const handlePlayEpisode = (episode: any) => {
     if (!currentSeries) return;
+    // Resume from last watched time for this episode if available
+    const epProgress = episodeProgressMap[episode._id]?.progress || 0;
     navigation.navigate("VideoPlayer", {
       cloudflareVideoId: episode.cloudflareVideoId,
       title: `${currentSeries.title} - S${episode.seasonNumber || activeSeason}E${episode.episodeNumber}`,
       contentId: currentSeries._id,
       contentType: "Series",
       episodeId: episode._id,
+      startTime: epProgress,
     });
   };
 
@@ -205,16 +240,23 @@ export default function SeriesDetailScreen({ route, navigation }: any) {
             <TouchableOpacity style={styles.navButton}>
               <Ionicons name="search" size={24} color="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.navButton}>
-              <Ionicons name="download-outline" size={24} color="#fff" />
-            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Progress Bar */}
-        <View style={styles.progressBarContainer}>
-          <View style={[styles.progressBar, { width: '35%' }]} />
-        </View>
+        {/* Progress Bar (show for first episode of selected season) */}
+        {selectedSeason?.episodes?.[0] && (
+          (() => {
+            const ep = selectedSeason.episodes[0];
+            const epProg = episodeProgressMap[ep._id]?.progress || 0;
+            const epDur = episodeProgressMap[ep._id]?.duration || (ep.duration ? ep.duration * 60 : 0);
+            return epDur > 0 ? (
+              <View style={styles.progressBarContainer}>
+                <View style={styles.progressBarBg} />
+                <View style={[styles.progressBarFg, { width: `${Math.min(100, (epProg / epDur) * 100)}%` }]} />
+              </View>
+            ) : null;
+          })()
+        )}
       </View>
 
       {/* Series Info */}
@@ -229,15 +271,11 @@ export default function SeriesDetailScreen({ route, navigation }: any) {
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{currentSeries.maturityRating}</Text>
           </View>
-          <TouchableOpacity 
-            style={styles.badge}
-            onPress={() => setShowSeasonPicker(true)}
-          >
+          <View style={styles.badge}>
             <Text style={styles.badgeText}>
               {currentSeries.seasons?.length || 0} Seasons
             </Text>
-            <Ionicons name="chevron-down" size={16} color="#fff" style={{ marginLeft: 4 }} />
-          </TouchableOpacity>
+          </View>
         </View>
 
         {/* Large Play Button */}
@@ -358,9 +396,16 @@ export default function SeriesDetailScreen({ route, navigation }: any) {
                   <Ionicons name="play-circle" size={40} color="rgba(255,255,255,0.9)" />
                 </View>
                 {/* Episode Progress */}
-                <View style={styles.episodeProgressContainer}>
-                  <View style={[styles.episodeProgress, { width: '45%' }]} />
-                </View>
+                {(() => {
+                  const epProg = episodeProgressMap[episode._id]?.progress || 0;
+                  const epDur = episodeProgressMap[episode._id]?.duration || (episode.duration ? episode.duration * 60 : 0);
+                  return epDur > 0 ? (
+                    <View style={styles.episodeProgressContainer}>
+                      <View style={styles.episodeProgressBg} />
+                      <View style={[styles.episodeProgressFg, { width: `${Math.min(100, (epProg / epDur) * 100)}%` }]} />
+                    </View>
+                  ) : null;
+                })()}
               </View>
 
               <View style={styles.episodeDetails}>
@@ -447,7 +492,7 @@ export default function SeriesDetailScreen({ route, navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#141414',
   },
   centered: {
     justifyContent: 'center',
@@ -460,9 +505,9 @@ const styles = StyleSheet.create({
   
   // Hero Section
   heroSection: {
-    position: 'relative',
-    height: 500,
-    width: '100%',
+     // 9:16 aspect ratio
+        height: Dimensions.get('window').width * 16 / 9,
+        position: 'relative',
   },
   heroPoster: {
     width: '100%',
@@ -474,7 +519,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 150,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0,0,0,0.75)',
   },
   topNav: {
     position: 'absolute',
@@ -495,7 +540,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(20,20,20,0.7)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -504,12 +549,36 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 3,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    height: TIMELINE_HEIGHT,
+    zIndex: 20,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
   },
-  progressBar: {
-    height: '100%',
+  progressBarBg: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: TIMELINE_HEIGHT,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: TIMELINE_HEIGHT / 2,
+  },
+  progressBarFg: {
+    height: TIMELINE_HEIGHT,
     backgroundColor: '#E50914',
+    borderRadius: TIMELINE_HEIGHT / 2,
+  },
+  episodeProgressBg: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 2,
+  },
+  episodeProgressFg: {
+    height: 4,
+    backgroundColor: '#E50914',
+    borderRadius: 2,
   },
 
   // Info Section
@@ -532,10 +601,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 6,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: '#1f1f1f',
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: '#2b2b2b',
   },
   badgeText: {
     color: '#fff',
@@ -562,7 +631,7 @@ const styles = StyleSheet.create({
   
   // Description
   seriesDescription: {
-    color: '#999',
+    color: '#b3b3b3',
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 24,
@@ -582,12 +651,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: '#2b2b2b',
     justifyContent: 'center',
     alignItems: 'center',
   },
   actionLabel: {
-    color: '#999',
+    color: '#b3b3b3',
     fontSize: 12,
   },
   
@@ -595,7 +664,7 @@ const styles = StyleSheet.create({
   tabsContainer: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: '#2b2b2b',
     marginBottom: 20,
   },
   tab: {
@@ -628,7 +697,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#1f1f1f',
     borderRadius: 6,
     marginBottom: 16,
   },
@@ -670,7 +739,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 4,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
   episodeProgress: {
     height: '100%',
@@ -692,18 +761,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   episodeDuration: {
-    color: '#999',
+    color: '#b3b3b3',
     fontSize: 14,
   },
   episodeDescription: {
-    color: '#999',
+    color: '#b3b3b3',
     fontSize: 13,
     lineHeight: 18,
   },
   
   // Empty States
   emptyText: {
-    color: '#666',
+    color: '#7a7a7a',
     fontSize: 14,
     textAlign: 'center',
     marginTop: 40,
@@ -714,7 +783,7 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
   },
   emptyTabText: {
-    color: '#666',
+    color: '#7a7a7a',
     fontSize: 16,
     marginTop: 16,
   },
@@ -722,11 +791,11 @@ const styles = StyleSheet.create({
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.85)',
+    backgroundColor: 'rgba(0,0,0,0.9)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#141414',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '70%',
@@ -738,7 +807,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: '#2b2b2b',
   },
   modalTitle: {
     color: '#fff',
@@ -752,7 +821,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: '#2b2b2b',
   },
   seasonOptionActive: {
     backgroundColor: 'rgba(229,9,20,0.1)',

@@ -41,15 +41,22 @@ export const login = createAsyncThunk(
   async ({ email, password }: { email: string; password: string }, { rejectWithValue }) => {
     try {
       const response = await apiService.login(email, password);
+      if (__DEV__) console.log('Login response:', response);
       const { user, accessToken, refreshToken } = response;
 
-        await tokenService.setAccessToken(accessToken);
-        await tokenService.setRefreshToken(refreshToken);
-        await tokenService.setUser(user);
+      if (!user || !accessToken || !refreshToken) {
+        if (__DEV__) console.error('Login response missing required fields:', { user, accessToken, refreshToken });
+        return rejectWithValue('Invalid login response from server');
+      }
+
+      await tokenService.setAccessToken(accessToken);
+      await tokenService.setRefreshToken(refreshToken);
+      await tokenService.setUser(user);
 
       return { user, accessToken, refreshToken };
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Login failed');
+      if (__DEV__) console.error('Login error:', error);
+      return rejectWithValue(error.message || error.response?.data?.message || 'Login failed');
     }
   }
 );

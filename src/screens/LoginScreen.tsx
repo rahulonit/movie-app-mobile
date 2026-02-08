@@ -104,7 +104,7 @@ export default function LoginScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#141414',
   },
   backButton: {
     position: 'absolute',
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 14,
-    color: '#999',
+    color: '#b3b3b3',
     marginBottom: 30,
     lineHeight: 20,
   },
@@ -140,14 +140,14 @@ const styles = StyleSheet.create({
   },
   ssoButton: {
     flex: 1,
-    backgroundColor: '#222',
+    backgroundColor: '#1f1f1f',
     paddingVertical: 16,
     borderRadius: 12,
     marginHorizontal: 6,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: '#2b2b2b',
   },
   ssoText: {
     fontSize: 28,
@@ -161,17 +161,17 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   input: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#1f1f1f',
     borderRadius: 12,
     padding: 18,
     fontSize: 16,
     color: '#fff',
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: '#2b2b2b',
   },
   button: {
-    backgroundColor: '#8B0000',
+    backgroundColor: '#E50914',
     borderRadius: 12,
     padding: 18,
     alignItems: 'center',
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   link: {
-    color: '#666',
+    color: '#8f8f8f',
     textAlign: 'center',
     fontSize: 14,
   },

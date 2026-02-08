@@ -136,7 +136,7 @@ export default function CategoryScreen({ route, navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#181818',
+    backgroundColor: '#141414',
   },
   header: {
     flexDirection: 'row',
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(20, 20, 20, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -169,15 +169,16 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: '#2b2b2b',
     marginRight: 8,
+    backgroundColor: '#1f1f1f',
   },
   chipActive: {
-    backgroundColor: '#333',
-    borderColor: '#fff',
+    backgroundColor: '#E50914',
+    borderColor: '#E50914',
   },
   chipText: {
-    color: '#bbb',
+    color: '#cfcfcf',
     fontSize: 13,
     fontWeight: '500',
   },
@@ -196,7 +197,9 @@ const styles = StyleSheet.create({
     width: CARD_WIDTH,
     borderRadius: 10,
     overflow: 'hidden',
-    backgroundColor: '#202020',
+    backgroundColor: '#1f1f1f',
+    borderWidth: 1,
+    borderColor: '#2b2b2b',
   },
   cardImage: {
     width: '100%',
@@ -215,7 +218,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyText: {
-    color: '#aaa',
+    color: '#8f8f8f',
     fontSize: 14,
     textAlign: 'center',
   },

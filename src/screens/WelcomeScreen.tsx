@@ -110,14 +110,14 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 18,
-    color: '#ccc',
+    color: '#b3b3b3',
     textAlign: 'center',
     lineHeight: 26,
     marginBottom: 60,
   },
   loginButton: {
     width: width - 60,
-    backgroundColor: '#8B0000',
+    backgroundColor: '#E50914',
     paddingVertical: 18,
     borderRadius: 12,
     alignItems: 'center',
@@ -130,13 +130,13 @@ const styles = StyleSheet.create({
   },
   guestButton: {
     width: width - 60,
-    backgroundColor: '#333',
+    backgroundColor: '#2b2b2b',
     paddingVertical: 18,
     borderRadius: 12,
     alignItems: 'center',
   },
   guestButtonText: {
-    color: '#999',
+    color: '#b3b3b3',
     fontSize: 18,
     fontWeight: '600',
   },

@@ -16,7 +16,6 @@ import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import ProfileSelectionScreen from './src/screens/ProfileSelectionScreen';
 import HomeScreen from './src/screens/HomeScreen';
-import SearchScreen from './src/screens/SearchScreen';
 import MyListScreen from './src/screens/MyListScreen';
 import AccountScreen from './src/screens/AccountScreen';
 import MovieDetailScreen from './src/screens/MovieDetailScreen';
@@ -33,9 +32,7 @@ function TabNavigator() {
       screenOptions={({ route }) => ({
         tabBarStyle: {
           backgroundColor: '#1a1a1a',
-          borderTopWidth: 0,
-          borderTopLeftRadius: 25,
-          borderTopRightRadius: 25,
+          borderTopWidth: 1,
           height: 80,
           paddingBottom: 20,
           paddingTop: 15,
@@ -51,18 +48,16 @@ function TabNavigator() {
         lazy: true,
         unmountOnBlur: false,
         freezeOnBlur: true,
+        tabBarShowLabel: false,
         tabBarIcon: ({ color, size, focused }) => {
           let iconName: any = 'home';
           if (route.name === 'Home') {
             iconName = 'home';
-          } else if (route.name === 'Search') {
-            iconName = 'search';
           } else if (route.name === 'My List') {
             iconName = 'list';
           } else if (route.name === 'Account') {
             iconName = 'person';
           }
-          
           return (
             <View style={[
               styles.tabIconContainer,
@@ -78,10 +73,7 @@ function TabNavigator() {
         name="Home" 
         component={HomeScreen}
       />
-      <Tab.Screen 
-        name="Search" 
-        component={SearchScreen}
-      />
+      
       <Tab.Screen 
         name="My List" 
         component={MyListScreen}

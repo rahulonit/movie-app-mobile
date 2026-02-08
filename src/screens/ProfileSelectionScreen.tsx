@@ -221,10 +221,10 @@ export default function ProfileSelectionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#141414',
     padding: 20,
     justifyContent: 'center',
-    marginTop: 50,
+    marginTop: 30,
   },
   backButton: {
     position: 'absolute',
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: '#fff',
     textAlign: 'center',
     marginBottom: 40,
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   actionText: {
-    color: '#E5E5E5',
+    color: '#b3b3b3',
     fontSize: 13,
   },
   deleteText: {
@@ -274,6 +274,8 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 8,
     marginBottom: 12,
+    borderWidth: 2,
+    borderColor: '#2b2b2b',
   },
   profileName: {
     color: '#fff',
@@ -281,7 +283,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   kidsLabel: {
-    color: '#808080',
+    color: '#b3b3b3',
     fontSize: 12,
     marginTop: 4,
   },
@@ -291,18 +293,18 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   addButtonText: {
-    color: '#808080',
+    color: '#b3b3b3',
     fontSize: 16,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.8)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
     width: '85%',
-    backgroundColor: '#111',
+    backgroundColor: '#141414',
     padding: 20,
     borderRadius: 8,
   },
@@ -313,7 +315,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   modalInput: {
-    backgroundColor: '#222',
+    backgroundColor: '#1f1f1f',
     color: '#fff',
     padding: 12,
     borderRadius: 6,
@@ -337,7 +339,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 6,
   },
   cancelButton: {
-    backgroundColor: '#333',
+    backgroundColor: '#2b2b2b',
   },
   submitButton: {
     backgroundColor: '#E50914',
