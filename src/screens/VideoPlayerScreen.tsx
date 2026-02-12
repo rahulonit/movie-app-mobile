@@ -12,6 +12,7 @@ export default function VideoPlayerScreen({ route, navigation }: any) {
   const { cloudflareVideoId, title, contentId, contentType, episodeId, genres } = route.params;
   const activeProfile = useSelector((state: RootState) => state.profile.activeProfile);
   const lastProgressSent = useRef<number>(0);
+  const sessionIdRef = useRef<string | null>(null);
   const webRef = useRef<WebView>(null);
   const [paused, setPaused] = useState(false);
   const [startPosition, setStartPosition] = useState<number>(0);
@@ -194,9 +195,48 @@ export default function VideoPlayerScreen({ route, navigation }: any) {
         if (dur > 0 && dur !== videoDuration) {
           setVideoDuration(dur);
         }
-        // ...existing code...
-        // (rest of progress event logic unchanged)
-        // ...existing code...
+        // Playback session integration (start/update/complete)
+        (async () => {
+          try {
+            if (!activeProfile || !duration) return;
+
+            // Start session once when duration is known
+            if (!sessionIdRef.current && duration > 0) {
+              const sessionId = await apiService.startPlaybackSession({
+                profileId: activeProfile._id,
+                titleId: contentId,
+                episodeId,
+                durationMs: duration,
+                currentCdn: 'cloudflare',
+                currentBitrate: 0,
+                resumeAt: position,
+              });
+              sessionIdRef.current = sessionId;
+            }
+
+            if (sessionIdRef.current) {
+              const now = Date.now();
+              const shouldSend = now - lastProgressSent.current > 10000; // ~10s
+              const nearEnd = duration > 0 && position >= duration - 2000; // last 2s
+
+              if (shouldSend || nearEnd) {
+                await apiService.updatePlaybackSession(sessionIdRef.current, {
+                  lastPositionMs: position,
+                  durationMs: duration,
+                  resumeAt: position,
+                });
+                lastProgressSent.current = now;
+              }
+
+              if (nearEnd) {
+                await apiService.completePlaybackSession(sessionIdRef.current);
+                sessionIdRef.current = null;
+              }
+            }
+          } catch (err) {
+            if (__DEV__) console.warn('Playback session update failed', err);
+          }
+        })();
       } else if (data?.type === 'qualityChange') {
         // Quality change detected - no action needed, just acknowledged
       }

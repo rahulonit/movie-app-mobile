@@ -33,7 +33,7 @@ const logDev = (...args: any[]) => {
 // Always start with production URL - resolveAndSetBaseURL will check for local dev servers if needed
 let API_BASE_URL = 'https://movie-app-backend-indol.vercel.app/api';
 
-type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
 interface RequestOptions {
   method?: HttpMethod;
@@ -293,11 +293,12 @@ class ApiService {
       throw new Error(err?.message || 'Network error');
     }
 
-    if (res.status === 401 && !retry && !skipRefresh) {
-      const refreshed = await this.refreshTokens();
-      if (refreshed) {
-        return this.request<T>(path, { ...options, retry: true });
-      }
+    // If token is expired/invalid, do not auto-refresh; require re-login.
+    if (res.status === 401) {
+      await tokenService.clearAll();
+      const error: any = new Error('Session expired. Please log in again.');
+      error.status = 401;
+      throw error;
     }
 
     const data = await this.parseJsonSafe(res);
@@ -357,6 +358,46 @@ class ApiService {
 
   async me() {
     return this.request('/auth/me');
+  }
+
+  // Playback sessions
+  async startPlaybackSession(body: {
+    profileId: string;
+    titleId: string;
+    episodeId?: string;
+    durationMs: number;
+    playbackToken?: string;
+    manifestUrl?: string;
+    licenseUrl?: string;
+    currentCdn?: string;
+    currentBitrate?: number;
+    resumeAt?: number;
+  }) {
+    const res = await this.request<{ data: { sessionId: string } }>('/playback/start', {
+      method: 'POST',
+      body,
+    });
+    return res.data.sessionId;
+  }
+
+  async updatePlaybackSession(sessionId: string, body: {
+    lastPositionMs?: number;
+    durationMs?: number;
+    currentCdn?: string;
+    currentBitrate?: number;
+    resumeAt?: number;
+    playbackError?: { code: string; message: string };
+  }) {
+    await this.request(`/playback/${sessionId}`, {
+      method: 'PATCH',
+      body,
+    });
+  }
+
+  async completePlaybackSession(sessionId: string) {
+    await this.request(`/playback/${sessionId}/complete`, {
+      method: 'POST',
+    });
   }
 
   // Content
