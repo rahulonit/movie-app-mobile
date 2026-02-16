@@ -9,6 +9,7 @@ import { store, RootState } from './src/store';
 import { loadStoredAuth } from './src/store/slices/authSlice';
 import { Ionicons } from '@expo/vector-icons';
 import { fetchProfiles, setActiveProfile } from './src/store/slices/profileSlice';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Screens - imported normally for React Native
 import WelcomeScreen from './src/screens/WelcomeScreen';
@@ -16,6 +17,7 @@ import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import ProfileSelectionScreen from './src/screens/ProfileSelectionScreen';
 import HomeScreen from './src/screens/HomeScreen';
+import SearchScreen from './src/screens/SearchScreen';
 import MyListScreen from './src/screens/MyListScreen';
 import AccountScreen from './src/screens/AccountScreen';
 import MovieDetailScreen from './src/screens/MovieDetailScreen';
@@ -27,15 +29,19 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 function TabNavigator() {
+  const insets = useSafeAreaInsets();
+  const bottomInset = insets.bottom || 0;
+  const tabBarHeight = 64 + bottomInset; // base height + inset
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarStyle: {
           backgroundColor: '#1a1a1a',
           borderTopWidth: 1,
-          height: 80,
-          paddingBottom: 20,
-          paddingTop: 15,
+          height: tabBarHeight,
+          paddingBottom: Math.max(12, bottomInset),
+          paddingTop: 12,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -5 },
           shadowOpacity: 0.3,
@@ -73,7 +79,7 @@ function TabNavigator() {
         name="Home" 
         component={HomeScreen}
       />
-      
+
       <Tab.Screen 
         name="My List" 
         component={MyListScreen}
@@ -154,6 +160,7 @@ function AppNavigator() {
       ) : (
         <>
           <Stack.Screen name="Main" component={TabNavigator} />
+          <Stack.Screen name="Search" component={SearchScreen} />
           <Stack.Screen name="ProfileSelection" component={ProfileSelectionScreen} />
           <Stack.Screen name="MovieDetail" component={MovieDetailScreen} />
           <Stack.Screen name="SeriesDetail" component={SeriesDetailScreen} />
@@ -172,7 +179,8 @@ function App() {
 
   return (
     <Provider store={store}>
-      <NavigationContainer
+      <SafeAreaProvider>
+        <NavigationContainer
         theme={{
           dark: true,
           colors: {
@@ -188,7 +196,8 @@ function App() {
       >
         <StatusBar style="light" />
         <AppNavigator />
-      </NavigationContainer>
+        </NavigationContainer>
+      </SafeAreaProvider>
     </Provider>
   );
 }

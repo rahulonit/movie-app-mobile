@@ -212,6 +212,20 @@ class ApiService {
     return url.toString();
   }
 
+  private getAlternateBaseURL(): string | null {
+    const trimmed = this.baseURL.replace(/\/$/, '');
+    if (/\/api$/i.test(trimmed)) {
+      const noApi = trimmed.replace(/\/api$/i, '');
+      return noApi || null;
+    }
+    return `${trimmed}/api`;
+  }
+
+  private shouldRetryWithAlternateBase(path: string) {
+    const normalized = path.startsWith('/') ? path : `/${path}`;
+    return normalized === '/auth' || normalized.startsWith('/auth/');
+  }
+
   private async refreshTokens(): Promise<boolean> {
     const refreshToken = await tokenService.getRefreshToken();
     if (!refreshToken) return false;
@@ -291,6 +305,33 @@ class ApiService {
       res = await this.rawFetch(url, { method, headers: finalHeaders, body: finalBody, timeoutMs });
     } catch (err: any) {
       throw new Error(err?.message || 'Network error');
+    }
+
+    if (res.status === 404 && this.shouldRetryWithAlternateBase(path)) {
+      const alternateBaseURL = this.getAlternateBaseURL();
+      if (alternateBaseURL && alternateBaseURL !== this.baseURL) {
+        const previousBaseURL = this.baseURL;
+        try {
+          this.baseURL = alternateBaseURL;
+          const alternateUrl = this.buildUrl(path, query);
+          const alternateRes = await this.rawFetch(alternateUrl, {
+            method,
+            headers: finalHeaders,
+            body: finalBody,
+            timeoutMs,
+          });
+          if (alternateRes.status !== 404) {
+            if (__DEV__) {
+              console.log('[ApiService] Retried auth request with alternate base URL:', alternateBaseURL);
+            }
+            res = alternateRes;
+          } else {
+            this.baseURL = previousBaseURL;
+          }
+        } catch (_e) {
+          this.baseURL = previousBaseURL;
+        }
+      }
     }
 
     // If token is expired/invalid, do not auto-refresh; require re-login.
@@ -437,8 +478,10 @@ class ApiService {
   }
 
   // My List
-  async addToMyList(profileId: string, contentId: string) {
-    return this.request('/my-list/add', { method: 'POST', body: { profileId, contentId } });
+  async addToMyList(profileId: string, contentId: string, contentType?: 'Movie' | 'Series') {
+    const body: any = { profileId, contentId };
+    if (contentType) body.contentType = contentType;
+    return this.request('/my-list/add', { method: 'POST', body });
   }
 
   async removeFromMyList(profileId: string, contentId: string) {

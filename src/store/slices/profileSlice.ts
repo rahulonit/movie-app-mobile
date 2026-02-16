@@ -88,13 +88,17 @@ export const fetchMyList = createAsyncThunk(
 
 export const addToMyList = createAsyncThunk(
   'profile/addToMyList',
-  async ({ profileId, contentId }: { profileId: string; contentId: string }, { rejectWithValue }) => {
+  async (
+    { profileId, contentId, contentType }: { profileId: string; contentId: string; contentType?: 'Movie' | 'Series' },
+    { rejectWithValue }
+  ) => {
     try {
-      await apiService.addToMyList(profileId, contentId);
+      await apiService.addToMyList(profileId, contentId, contentType);
       const refreshed = await apiService.getMyList(profileId);
       return refreshed.data.myList;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to add to My List');
+      const message = error?.body?.message || error?.response?.data?.message || error?.message || 'Failed to add to My List';
+      return rejectWithValue(message);
     }
   }
 );
@@ -107,7 +111,8 @@ export const removeFromMyList = createAsyncThunk(
       const refreshed = await apiService.getMyList(profileId);
       return refreshed.data.myList;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to remove from My List');
+      const message = error?.body?.message || error?.response?.data?.message || error?.message || 'Failed to remove from My List';
+      return rejectWithValue(message);
     }
   }
 );

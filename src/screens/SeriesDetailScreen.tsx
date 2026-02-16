@@ -160,6 +160,7 @@ export default function SeriesDetailScreen({ route, navigation }: any) {
           addToMyList({
             profileId: activeProfile._id,
             contentId: currentSeries._id,
+            contentType: 'Series',
           }),
         ).unwrap();
         setInMyList(true);

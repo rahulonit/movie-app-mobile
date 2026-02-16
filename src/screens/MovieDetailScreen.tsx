@@ -120,10 +120,11 @@ export default function MovieDetailScreen({ route, navigation }: any) {
         await dispatch(fetchMyList(activeProfile._id));
         setInMyList(false);
       } else {
-        await dispatch(addToMyList({
-          profileId: activeProfile._id,
-          contentId: currentMovie._id,
-        })).unwrap();
+          await dispatch(addToMyList({
+            profileId: activeProfile._id,
+            contentId: currentMovie._id,
+            contentType: 'Movie',
+          })).unwrap();
         await dispatch(fetchMyList(activeProfile._id));
         setInMyList(true);
       }

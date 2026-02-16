@@ -22,6 +22,9 @@ const { width } = Dimensions.get('window');
 const ITEM_WIDTH = width * 0.35;
 const FEATURE_CARD_WIDTH = width * 0.85;
 const FEATURE_CARD_SPACING = 12;
+const GRID_PADDING = 16;
+const GRID_GAP = 8;
+const GRID_ITEM_WIDTH = (width - GRID_PADDING * 2 - GRID_GAP * 2) / 3;
 
 export default function HomeScreen({ navigation }: any) {
 	const dispatch = useDispatch<AppDispatch>();
@@ -36,8 +39,49 @@ export default function HomeScreen({ navigation }: any) {
 	}, [activeProfile, dispatch]);
 
 	const [refreshing, setRefreshing] = useState(false);
-	const [selectedTab, setSelectedTab] = useState('All');
+	const [selectedTab, setSelectedTab] = useState('Series');
 	const [featuredIndex, setFeaturedIndex] = useState(0);
+	const [gridVisibleCount, setGridVisibleCount] = useState(24);
+
+	// helper to filter items by the selected tab
+	const filterByTab = (items: any[] | undefined) => {
+		if (!items) return items || [];
+		if (selectedTab === 'Series') return items.filter((i: any) => !!i?.seasons);
+		if (selectedTab === 'Movies') return items.filter((i: any) => !i?.seasons);
+		return items;
+	};
+
+	// aggregate helpers
+	const collectAllMovies = () => {
+		const movieKeys = ['actionMovies', 'comedyMovies', 'newReleases', 'trending'];
+		const items: any[] = [];
+		movieKeys.forEach((k) => {
+			const arr = (homeFeed as any)?.[k] || [];
+			arr.forEach((it: any) => {
+				if (!it) return;
+				if (!it.seasons) items.push(it);
+			});
+		});
+		// dedupe by _id
+		const map = new Map();
+		items.forEach((i) => map.set(i._id || i.id, i));
+		return Array.from(map.values());
+	};
+
+	const collectAllSeries = () => {
+		const seriesKeys = ['trendingSeries'];
+		const items: any[] = [];
+		seriesKeys.forEach((k) => {
+			const arr = (homeFeed as any)?.[k] || [];
+			arr.forEach((it: any) => {
+				if (!it) return;
+				if (it.seasons) items.push(it);
+			});
+		});
+		const map = new Map();
+		items.forEach((i) => map.set(i._id || i.id, i));
+		return Array.from(map.values());
+	};
 
 	useEffect(() => {
 		dispatch(fetchHomeFeed());
@@ -86,13 +130,6 @@ export default function HomeScreen({ navigation }: any) {
 			<View style={styles.section}>
 				<View style={styles.sectionHeader}>
 					<Text style={styles.sectionTitle}>{title}</Text>
-					<TouchableOpacity
-						style={styles.seeAllButton}
-						onPress={() => navigation.navigate('Category', { initialCategoryKey: sectionKey })}
-					>
-						<Text style={styles.seeAllText}>See All</Text>
-						<Ionicons name="chevron-forward" size={18} color="#fff" />
-					</TouchableOpacity>
 				</View>
 				<FlatList
 					horizontal
@@ -106,7 +143,57 @@ export default function HomeScreen({ navigation }: any) {
 		);
 	};
 
-	const featuredItems = useMemo(() => (homeFeed?.trending || []).slice(0, 4), [homeFeed]);
+	const renderGridItem = ({ item }: any) => (
+		<TouchableOpacity
+			style={styles.gridCard}
+			onPress={() => {
+				const screenName = item.seasons ? 'SeriesDetail' : 'MovieDetail';
+				navigation.navigate(screenName, { id: item._id });
+			}}
+		>
+			<Image
+				source={{ uri: item.poster?.vertical || item.poster?.horizontal }}
+				style={styles.gridImage}
+				resizeMode="cover"
+			/>
+			<Text style={styles.gridTitle} numberOfLines={1}>{item.title}</Text>
+		</TouchableOpacity>
+	);
+
+	const featuredItems = useMemo(() => {
+		// Build featured list depending on selected tab.
+		// For 'All' show the latest items across both movies and series.
+		let list: any[] = [];
+
+		if (selectedTab === 'All') {
+			const movies = homeFeed?.trending || [];
+			const series = homeFeed?.trendingSeries || [];
+			list = [...movies, ...series].filter(Boolean);
+			// sort newest first by releaseYear when available
+			list.sort((a: any, b: any) => (b.releaseYear || 0) - (a.releaseYear || 0));
+		} else if (selectedTab === 'Movies') {
+			list = (homeFeed?.trending || []).filter(Boolean).sort((a: any, b: any) => (b.releaseYear || 0) - (a.releaseYear || 0));
+		} else if (selectedTab === 'Series') {
+			list = (homeFeed?.trendingSeries || []).filter(Boolean).sort((a: any, b: any) => (b.releaseYear || 0) - (a.releaseYear || 0));
+		} else {
+			// fallback: use trending but apply existing tab filter
+			list = filterByTab(homeFeed?.trending || []);
+		}
+
+		// dedupe by id and keep order
+		const seen = new Set();
+		const deduped: any[] = [];
+		for (const it of list) {
+			const id = it?._id || it?.id;
+			if (!id) continue;
+			if (!seen.has(id)) {
+				seen.add(id);
+				deduped.push(it);
+			}
+		}
+
+		return deduped.slice(0, 4);
+	}, [homeFeed, selectedTab]);
 
 	const handleFeaturedScroll = (event: any) => {
 		const offsetX = event.nativeEvent.contentOffset.x;
@@ -133,10 +220,12 @@ export default function HomeScreen({ navigation }: any) {
 					removeFromMyList({ profileId: activeProfile._id, contentId: item._id })
 				).unwrap();
 			} else {
-				await dispatch(addToMyList({ profileId: activeProfile._id, contentId: item._id })).unwrap();
+				const contentType = item.seasons ? 'Series' : 'Movie';
+				await dispatch(addToMyList({ profileId: activeProfile._id, contentId: item._id, contentType })).unwrap();
 			}
 			await dispatch(fetchMyList(activeProfile._id)).unwrap();
 		} catch (error: any) {
+			console.error('handleToggleMyList error:', error);
 			const message = typeof error === 'string'
 				? error
 				: error?.message || error?.toString?.() || 'Unable to update My List';
@@ -178,29 +267,58 @@ export default function HomeScreen({ navigation }: any) {
 
 			{/* Category Tabs */}
 			<View style={styles.tabs}>
-				{['Series', 'Movies', 'Categories'].map((tab) => (
+				{['All', 'Series', 'Movies', 'Categories'].map((tab) => (
 					<TouchableOpacity
 						key={tab}
 						style={[styles.tab, selectedTab === tab && styles.tabActive]}
-						onPress={() => setSelectedTab(tab)}
+						onPress={() => {
+							if (tab === 'Categories') {
+								navigation.navigate('Category');
+								return;
+							}
+							setSelectedTab(tab);
+						}}
 					>
 						<Text style={[styles.tabText, selectedTab === tab && styles.tabTextActive]}>
 							{tab}
 						</Text>
-						{tab === 'Categories' && (
-							<Ionicons name="chevron-down" size={16} color="#fff" style={{ marginLeft: 4 }} />
-						)}
 					</TouchableOpacity>
 				))}
 			</View>
 
-			<ScrollView
-				style={styles.container}
-				showsVerticalScrollIndicator={false}
-				refreshControl={
-					<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
-				}
-			>
+			{
+				(selectedTab === 'Movies' || selectedTab === 'Series') ? (
+					// Use FlatList as the primary vertical scroller for grid mode to avoid nested VirtualizedLists
+					<FlatList
+						data={(selectedTab === 'Movies' ? collectAllMovies() : collectAllSeries()).slice(0, gridVisibleCount)}
+						renderItem={renderGridItem}
+						keyExtractor={(item, index) => `${item._id || item.id}-${index}`}
+						numColumns={3}
+						columnWrapperStyle={styles.gridRow}
+						contentContainerStyle={styles.grid}
+						refreshing={refreshing}
+						onRefresh={onRefresh}
+						showsVerticalScrollIndicator={false}
+						ListFooterComponent={() => {
+							const items = selectedTab === 'Movies' ? collectAllMovies() : collectAllSeries();
+							if (items.length > gridVisibleCount) {
+								return (
+									<TouchableOpacity style={styles.loadMore} onPress={() => setGridVisibleCount((c) => c + 24)}>
+										<Text style={styles.loadMoreText}>Load more</Text>
+									</TouchableOpacity>
+								);
+							}
+							return <View style={{ height: 100 }} />;
+						}}
+					/>
+				) : (
+					<ScrollView
+						style={styles.container}
+						showsVerticalScrollIndicator={false}
+						refreshControl={
+							<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
+						}
+					>
 				{/* Featured Content Carousel */}
 				{featuredItems.length > 0 && (
 					<View style={styles.featuredCarouselWrapper}>
@@ -276,17 +394,30 @@ export default function HomeScreen({ navigation }: any) {
 					</View>
 				)}
 
-				{/* Content Sections */}
-				{renderSection('Recommended for You', recommendations || [], 'recommendations')}
-				{renderSection('Continue Watching', homeFeed?.continueWatching || [], 'continueWatching')}
-				{renderSection('Trending Now', homeFeed?.trending || [], 'trending')}
-				{renderSection('Trending Series', homeFeed?.trendingSeries || [], 'trendingSeries')}
-				{renderSection('New Releases', homeFeed?.newReleases || [], 'newReleases')}
-				{renderSection('Action Movies', homeFeed?.actionMovies || [], 'actionMovies')}
-				{renderSection('Comedy Movies', homeFeed?.comedyMovies || [], 'comedyMovies')}
+				{/* Content Sections (filtered by tab) */}
+				{selectedTab === 'All' ? (
+					<>
+						{renderSection('Continue Watching', filterByTab(homeFeed?.continueWatching || []), 'continueWatching')}
+						{renderSection('Recommended for You', filterByTab(recommendations || []), 'recommendations')}
+						{renderSection('Movies', collectAllMovies(), 'movies')}
+						{renderSection('Series', collectAllSeries(), 'series')}
+					</>
+				) : (
+					<>
+						{renderSection('Recommended for You', filterByTab(recommendations || []), 'recommendations')}
+						{renderSection('Continue Watching', filterByTab(homeFeed?.continueWatching || []), 'continueWatching')}
+						{renderSection('Trending Now', filterByTab(homeFeed?.trending || []), 'trending')}
+						{renderSection('Trending Series', filterByTab(homeFeed?.trendingSeries || []), 'trendingSeries')}
+						{renderSection('New Releases', filterByTab(homeFeed?.newReleases || []), 'newReleases')}
+						{renderSection('Action Movies', filterByTab(homeFeed?.actionMovies || []), 'actionMovies')}
+						{renderSection('Comedy Movies', filterByTab(homeFeed?.comedyMovies || []), 'comedyMovies')}
+					</>
+				)}
 
 				<View style={{ height: 100 }} />
-			</ScrollView>
+					</ScrollView>
+				)}
+
 		</View>
 	);
 }
@@ -485,6 +616,46 @@ const styles = StyleSheet.create({
 	},
 	section: {
 		marginTop: 20,
+	},
+	grid: {
+		paddingHorizontal: GRID_PADDING,
+		paddingBottom: 24,
+	},
+	gridRow: {
+		justifyContent: 'space-between',
+		marginBottom: 12,
+	},
+	gridCard: {
+		width: GRID_ITEM_WIDTH,
+		borderRadius: 8,
+		overflow: 'hidden',
+		backgroundColor: '#1f1f1f',
+		borderWidth: 1,
+		borderColor: '#2b2b2b',
+		alignItems: 'center',
+	},
+	gridImage: {
+		width: '100%',
+		height: GRID_ITEM_WIDTH * 1.4,
+	},
+	gridTitle: {
+		color: '#fff',
+		fontSize: 12,
+		fontWeight: '600',
+		padding: 8,
+		textAlign: 'center',
+	},
+	loadMore: {
+		marginTop: 12,
+		alignSelf: 'center',
+		paddingHorizontal: 20,
+		paddingVertical: 10,
+		backgroundColor: '#E50914',
+		borderRadius: 8,
+	},
+	loadMoreText: {
+		color: '#fff',
+		fontWeight: '600',
 	},
 	sectionHeader: {
 		flexDirection: 'row',
